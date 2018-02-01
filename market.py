@@ -11,24 +11,25 @@ class Market(object):
     Attributes:
         bid_price: The 'market' bid price
         ask_price: The 'market' ask price
+        volume: Max volume to buy or sell vs the market per period
+        price_upper_bound: Upper bound on the price to trade with the market
+        price_lower_bound: Lower bound on the price to trade with the market
     """
 
-    def __init__(self, bid_price=None, ask_price=None, price_upper_bound=100, price_lower_bound=0):
+    def __init__(self, bid_price=None, ask_price=None, volume=1000, price_upper_bound=100, price_lower_bound=0):
         """
         Return a market object
         :param bid_price: bid price to initialise on - None will give random init
         :param ask_price: ask price to initialise on - None will give random init
+        :param volume: max volume to buy or sell per period
         :param price_upper_bound:
         :param price_lower_bound:
         """
         self.bid_price = bid_price
         self.ask_price = ask_price
+        self.volume = volume
         self.price_upper_bound = price_upper_bound
         self.price_lower_bound = price_lower_bound
-
-    def set_prices(self):
-        self.set_bid_price()
-        self.set_ask_price()
 
     def set_bid_price(self):
         self.bid_price = random.uniform(self.price_lower_bound,self.price_upper_bound)
@@ -37,6 +38,16 @@ class Market(object):
     def set_ask_price(self):
         self.ask_price = self.bid_price
         return self.ask_price
+
+    def willing_to_buy(self):
+        price = self.set_bid_price()
+        volume = self.volume
+        return {price:volume}
+
+    def willing_to_sell(self):
+        price = self.set_ask_price()
+        volume = self.volume
+        return {price:volume}
 
 
 class MarketRandomWalk(Market):
@@ -55,6 +66,7 @@ class MarketRandomWalk(Market):
         else:
             price_change = self.walk_dist(*self.walk_dist_params)
             self.bid_price = self.bid_price + price_change
+
         return self.bid_price
 
     def set_ask_price(self):
@@ -64,5 +76,6 @@ class MarketRandomWalk(Market):
         else:
             price_change = self.walk_dist(*self.walk_dist_params)
             self.ask_price = self.ask_price + price_change
+
         return self.ask_price
 
