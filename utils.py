@@ -10,7 +10,7 @@ def setup_logging(concat_single_log=True):
     """
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger('log')
-    log_folder = os.path.join(os.path.dirname(__file__), 'log')
+    log_folder = os.path.join(os.path.dirname(__file__), 'log_files')
 
     if concat_single_log:
         log_file = os.path.join(log_folder, 'log.txt')
