@@ -10,7 +10,7 @@ import utils
 
 def main():
     # initialise market
-    walk_dist = R = np.random.RandomState(3).normal
+    walk_dist = np.random.RandomState(3).normal
     walk_dist_params = (0,1)
     mkt = MarketRandomWalk(walk_dist,walk_dist_params)
     logger.info('Generated market with config: {0}'.format(mkt.__dict__))
@@ -30,7 +30,8 @@ def main():
 
 
 if __name__ == '__main__':
+    print('Process start')
     logger = utils.setup_logging()
     main()
 
-    print('Main end')
+    print('Process end')
