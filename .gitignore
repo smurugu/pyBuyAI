@@ -100,9 +100,5 @@ ENV/
 # mypy
 .mypy_cache/
 
-# project log files
-log/*
-log_files/log.txt
-
 # pycharm project files
 .idea
