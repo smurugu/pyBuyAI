@@ -102,3 +102,6 @@ ENV/
 
 # pycharm project files
 .idea
+
+#log files
+log_files/
