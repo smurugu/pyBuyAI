@@ -30,7 +30,8 @@ def main():
 
 
 if __name__ == '__main__':
+    print('Process start')
     logger = utils.setup_logging()
     main()
 
-    print('Main end')
+    print('Process end')
