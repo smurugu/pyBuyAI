@@ -19,12 +19,13 @@ def main():
 
     for t in range(0,10):
         logger.info('Running process for time period {0}'.format(t))
-        willing_to_buy = mkt.willing_to_buy()
-        willing_to_sell = mkt.willing_to_sell()
-        logger.info('Prices available to buy: {0}'.format(willing_to_sell))
-        logger.info('Prices available to sell: {0}'.format(willing_to_buy))
+        market_bids = mkt.state_bids()
+        market_asks = mkt.state_asks()
+        logger.info('Market bid prices: {0}'.format(market_bids))
+        logger.info('Market bid-ask spread: {0}'.format(mkt.bid_ask_spread))
+        logger.info('Market ask prices: {0}'.format(market_asks))
 
-        transactions = player1.evaluate_offers(willing_to_buy,willing_to_sell)
+        transactions = player1.evaluate_offers(market_bids,market_asks)
 
     return
 
