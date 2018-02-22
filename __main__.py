@@ -30,12 +30,13 @@ def main():
 
     S = env.get_possible_states(price_levels,num_players)
 
-    # Instantiate the players
+    # Initialise the players
     player_list = []
     for p in range(num_players):
-        player_list[p] = agents.Player(p, alpha, gamma, epsilon, epsilon_decay_1, epsilon_decay_2, epsilon_threshold, agent_valuation)
-        player_list[p].generate_r()
-        player_list[p].generate_q()
+        new_player = agents.Player(p, alpha, gamma, epsilon, epsilon_decay_1, epsilon_decay_2, epsilon_threshold, agent_valuation)
+        new_player.set_r(S,bid_periods,agent_valuation)
+        new_player.set_q()
+        player_list = player_list + [new_player]
 
     for t in range(trials):
         for period in range(bid_periods):

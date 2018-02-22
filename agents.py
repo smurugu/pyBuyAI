@@ -18,11 +18,51 @@ class Player(object):
         self.Q = None
         self.R = None
 
-    def generate_r(self, bid_periods, discrete_price_levels, players, player_id, agent_valuation):
-        self.R = None
+    def get_r(self, S, bid_periods, agent_valuation=None):
+        # allow override of agent_valuation if desired: default to self.value if not
+        agent_valuation = self.agent_valuation if agent_valuation is None else agent_valuation
 
-    def generate_q(self):
-        self.Q = np.zeros(np.shape(self.R))
+        R3D = np.array([[[np.nan for y in S] for x in S] for t in np.arange(bid_periods)])
+        R3D = np.zeros(np.shape(R3D))
+
+        # can only bid a price higher than previously bid
+        filt2 = np.array([[y.current_bids[self.player_id] < max(x.current_bids) for y in S] for x in S])
+        R3D[:, filt2] = np.nan
+
+        # once player has bid nan, cannot re-enter auction
+        filt3 = np.array(
+            [[(np.isnan(x.current_bids[self.player_id])) & (~np.isnan(y.current_bids[self.player_id])) for y in S] for x in S])
+        R3D[:, filt3] = np.nan
+
+        # cannot change other player states
+        filt4 = np.array(
+            [[[b1 for i1, b1 in enumerate(x.current_bids) if i1 != self.player_id] != [b2 for i2, b2 in
+                                                                               enumerate(y.current_bids) if
+                                                                               i2 != self.player_id]
+              for y in S] for x in S])
+        R3D[:, filt4] = np.nan
+
+        # agent payoff set for final period is (valuation - price) if winner, 0 if not winner
+        filt5 = np.triu(np.array([[True for y in S] for x in S]), 1)
+        R3D[bid_periods - 1, filt5] = np.nan
+        values = np.array(
+            [[(agent_valuation - max(y.current_bids) if y.current_winner == self.player_id else 0) for y in S] for x in S])
+        R3D[bid_periods - 1, :, :] = np.multiply(R3D[bid_periods - 1, :, :] + 1, values)
+
+        return R3D
+
+    def set_r(self, S, bid_periods, agent_valuation=None):
+        # allow override of agent_valuation if desired: default to self.value if not
+        agent_valuation = self.agent_valuation if agent_valuation is None else agent_valuation
+        self.R = self.get_r(S, bid_periods, agent_valuation)
+        return self.R
+
+    def get_q(self):
+        return np.zeros(np.shape(self.R))
+
+    def set_q(self):
+        self.Q = self.get_q()
+        return self.Q
 
     def select_action(self):
         """
