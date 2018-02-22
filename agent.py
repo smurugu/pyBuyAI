@@ -137,8 +137,8 @@ class Player(object):
         logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
         return self.Q
 
-    def update_epsilon(self):
+    def update_epsilon(self,rounding=4):
         if self.epsilon > self.epsilon_threshold:
-            self.epsilon = self.epsilon * self.epsilon_decay_1
+            self.epsilon = round(self.epsilon * self.epsilon_decay_1,rounding)
         else:
-            self.epsilon = self.epsilon * self.epsilon_decay_2
+            self.epsilon = round(self.epsilon * self.epsilon_decay_2,rounding)
