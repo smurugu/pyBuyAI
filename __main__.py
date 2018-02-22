@@ -11,8 +11,8 @@ def main():
     Run auction
     """
     # Game parameters
-    episodes = 1000
-    initial_state_random = False
+    episodes = 10000
+    initial_state_random = True
 
     # Environment parameters
     bid_periods = 3
@@ -23,8 +23,8 @@ def main():
     alpha = 0.8
     gamma = 0.5
     epsilon = 1
-    epsilon_decay_1 = 0.999
-    epsilon_decay_2 = 0.99
+    epsilon_decay_1 = 0.9999
+    epsilon_decay_2 = 0.999
     epsilon_threshold = 0.6
     agent_valuation = price_levels * 0.7
 
@@ -38,13 +38,12 @@ def main():
         new_player.set_q()
         player_list = player_list + [new_player]
 
-    s = env.get_initial_state(S,initial_state_random)
-
     for i in range(episodes):
-        logging.info('Begin episode {0} of {1}'.format(i,episodes-1))
+        logging.info('Begin episode {0} of {1}'.format(i, episodes - 1))
+        s = env.get_initial_state(S, initial_state_random)
         for t in range(bid_periods):
             is_final_period = False if t < bid_periods - 1 else True
-            logging.info('Begin bidding period {0}, final period: {1}'.format(t, is_final_period))
+            logging.info('Begin bidding period {0}, final period: {1}, state: {2}'.format(t, is_final_period, S[s]))
 
             for p in player_list:
                 a = p.select_action(t,s)
