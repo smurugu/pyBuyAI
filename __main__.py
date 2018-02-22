@@ -12,7 +12,7 @@ def main():
     Run auction
     """
     # Game parameters
-    trials = 10000
+    trials = 1000
     initial_state_random = False
 
     # Environment parameters
@@ -50,8 +50,7 @@ def main():
                 a = p.select_action(t,s)
                 p.update_q(t, s, a, is_final_period)
                 s = a
-
-
+                p.update_epsilon()
 
 
 if __name__ == '__main__':
