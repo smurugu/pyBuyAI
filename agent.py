@@ -122,9 +122,8 @@ class Player(object):
         # check available actions and associated q-values for new state: assume greedy policy choice of action for a2
         t2 = t+1 if not is_final_period else t
         s2 = a
-        actions2 = [i for i,v in enumerate(self.R[t2,s2]) if not np.isnan(v)]
-        q_values2 = [(i,v) for i,v in enumerate(self.Q[t2,s2]) if i in actions2]
-        a2 = sorted(q_values2,key=lambda x: x[1], reverse=True)[0][0]
+        logging.info('Updating Q value (evaluating selection of greedy action for T+1)')
+        a2 = self.select_action_greedy(t2,s2)
         Qnext = self.Q[t2,s2,a2]
 
         # 6) Use the Q-learning rule to calcualte the new Q(s,a) value and update the Q matrix accordingly
