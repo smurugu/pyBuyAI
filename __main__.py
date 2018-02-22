@@ -1,6 +1,6 @@
 import logging
-import agents
-import auction as env
+import agent
+import environment as env
 import datetime as dt
 
 
@@ -33,7 +33,7 @@ def main():
     # Initialise the players
     player_list = []
     for p in range(num_players):
-        new_player = agents.Player(p, alpha, gamma, epsilon, epsilon_decay_1, epsilon_decay_2, epsilon_threshold, agent_valuation)
+        new_player = agent.Player(p, alpha, gamma, epsilon, epsilon_decay_1, epsilon_decay_2, epsilon_threshold, agent_valuation)
         new_player.set_r(S,bid_periods,agent_valuation)
         new_player.set_q()
         player_list = player_list + [new_player]

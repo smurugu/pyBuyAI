@@ -1,5 +1,5 @@
 import numpy as np
-import auction as env
+import environment as env
 
 
 class Player(object):
