@@ -3,7 +3,6 @@ import agent
 import environment as env
 import datetime as dt
 
-
 def main():
     """
     Get params
@@ -12,7 +11,7 @@ def main():
     Run auction
     """
     # Game parameters
-    trials = 1000
+    episodes = 1000
     initial_state_random = False
 
     # Environment parameters
@@ -41,7 +40,8 @@ def main():
 
     s = env.get_initial_state(S,initial_state_random)
 
-    for i in range(trials):
+    for i in range(episodes):
+        logging.info('Begin episode {0} of {1}'.format(i,episodes-1))
         for t in range(bid_periods):
             is_final_period = False if t < bid_periods - 1 else True
             logging.info('Begin bidding period {0}, final period: {1}'.format(t, is_final_period))
@@ -52,11 +52,13 @@ def main():
                 s = a
                 p.update_epsilon()
 
+        logging.info('Auction complete, final state: {0}'.format(S[s]))
+    logging.info('All episodes complete')
+
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),
                         format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
     logging.info('Process start')
     main()
-
-    print('Process end')
+    logging.info('Process end')
