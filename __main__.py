@@ -13,6 +13,7 @@ def main():
     """
     # Game parameters
     trials = 10000
+    initial_state_random = False
 
     # Environment parameters
     bid_periods = 5
@@ -37,6 +38,8 @@ def main():
         new_player.set_r(S,bid_periods,agent_valuation)
         new_player.set_q()
         player_list = player_list + [new_player]
+
+    s = env.get_initial_state(S,initial_state_random)
 
     for t in range(trials):
         for period in range(bid_periods):

@@ -19,6 +19,17 @@ def get_possible_states(num_price_levels, num_players):
     logging.info('Declared {0} possible states, examples: \n{1}'.format(len(S), S[0:3]))
     return S
 
+def get_initial_state(S,initial_state_random):
+    if initial_state_random:
+        s = np.random.choice(len(S))
+        logging.info('Randomly initialize state to {0}'.format({s:S[s]}))
+    else:
+        s = 0
+        logging.info('Set initial state to {0}'.format({s:S[s]}))
+
+    return s
+
+
 def set_winner(state):
     """
     Function reads in a State named tuple and returns a new State tuple with the field 'current_winner' overwritten
