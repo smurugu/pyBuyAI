@@ -1,5 +1,7 @@
 import numpy as np
-from auction import Auction_env
+import auction as env
+
+
 class Player(object):
     """
     This is an agent
@@ -17,7 +19,7 @@ class Player(object):
         self.R = None
 
     def generate_r(self, bid_periods, discrete_price_levels, players, player_id, agent_valuation):
-        self.R = Auction_env.generate_R(bid_periods, discrete_price_levels, players, player_id, agent_valuation)
+        self.R = None
 
     def generate_q(self):
         self.Q = np.zeros(np.shape(self.R))
