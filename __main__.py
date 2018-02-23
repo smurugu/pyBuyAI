@@ -23,7 +23,7 @@ def main():
     alpha = 0.8
     gamma = 0.5
     epsilon = 1
-    epsilon_decay_1 = 0.9999
+    epsilon_decay_1 = 0.99995
     epsilon_decay_2 = 0.999
     epsilon_threshold = 0.6
     agent_valuation = price_levels * 0.7
@@ -41,17 +41,19 @@ def main():
     for i in range(episodes):
         logging.info('Begin episode {0} of {1}'.format(i, episodes - 1))
         s = env.get_initial_state(S, initial_state_random)
+        path = []
         for t in range(bid_periods):
             is_final_period = False if t < bid_periods - 1 else True
             logging.info('Begin bidding period {0}, final period: {1}, state: {2}'.format(t, is_final_period, S[s]))
-
             for p in player_list:
                 a = p.select_action(t,s)
+                path = path + [a]
                 p.update_q(t, s, a, is_final_period)
                 s = a
                 p.update_epsilon()
 
-        logging.info('Auction complete, final state: {0}'.format(S[s]))
+        path = [(ac, S[ac]) for ac in path]
+        logging.info('Auction complete, path taken: {0}'.format(path))
     logging.info('All episodes complete')
 
 
