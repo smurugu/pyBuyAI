@@ -12,10 +12,10 @@ def main():
     """
     # Game parameters
     episodes = 10000
-    initial_state_random = True
+    initial_state_random = False
 
     # Environment parameters
-    bid_periods = 3
+    bid_periods = 5
     price_levels = 10
     num_players = 1
 
@@ -23,7 +23,7 @@ def main():
     alpha = 0.8
     gamma = 0.5
     epsilon = 1
-    epsilon_decay_1 = 0.99995
+    epsilon_decay_1 = 0.9999
     epsilon_decay_2 = 0.999
     epsilon_threshold = 0.6
     agent_valuation = price_levels * 0.7
@@ -49,13 +49,18 @@ def main():
                 a = p.select_action(t,s)
                 path = path + [a]
                 p.update_q(t, s, a, is_final_period)
+                p.update_path_log(i, t, s, a)
                 s = a
-                p.update_epsilon()
 
+        p.update_epsilon()
         path = [(ac, S[ac]) for ac in path]
         logging.info('Auction complete, path taken: {0}'.format(path))
-    logging.info('All episodes complete')
+    logging.info('All episodes complete, printing path history for all agents...')
 
+    for i,player in enumerate(player_list):
+        player.serialise_agent()
+        fig,axs = player.get_path_graphics()
+        fig.savefig(player.get_serialised_file_name()+'.png')
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),
