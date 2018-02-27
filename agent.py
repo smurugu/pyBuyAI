@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle as pck
 import json
+import os
 
 class Player(object):
     """
@@ -145,7 +146,7 @@ class Player(object):
         logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
         return self.Q
 
-    def update_epsilon(self,rounding_amt=4):
+    def update_epsilon(self,rounding_amt=7):
         if self.epsilon > self.epsilon_threshold:
             epsilon = self.epsilon * self.epsilon_decay_1
         else:
@@ -166,6 +167,26 @@ class Player(object):
         row_df['bid'] = self.S[action_index].current_bids[self.player_id]
 
         return row_df
+
+    def write_path_log_entry(self, csv_path=None, log_args=()):
+
+        if csv_path is None:
+            csv_path = self.get_serialised_file_name() + '_path.hdf'
+
+        if os.path.isfile(csv_path):
+            # write single row only
+            f = open(csv_path, "a+")
+            entry = '\n' + '#'.join([str(x) for x in self.get_path_log_entry(*log_args).values[0]])
+            f.write(entry)
+            f.close()
+        else:
+            f = open(csv_path, "w+")
+            entry = '#'.join(self.path_df.columns)
+            f.write(entry)
+            f.close()
+            self.write_path_log_entry(csv_path=csv_path, log_args=log_args)
+
+        return
 
     def update_path_log(self, episode, bidding_round, prev_state, action):
         self.path_df = self.path_df.append(self.get_path_log_entry(episode, bidding_round, prev_state, action))
@@ -213,13 +234,13 @@ class Player(object):
 
     def get_serialised_file_name(self):
         T,S,A = np.shape(self.R)
-        file_name = 'player{0}_T{1}_S{2}_a{3}_g{4}_e{5}_ed1{6}_ed2{7}'.format(
+        file_name = 'player{0}_T{1}_S{2}_a{3}_g{4}_eth{5}_ed1-{6}_ed2-{7}'.format(
             self.player_id,
             T,
             S,
             self.alpha,
             self.gamma,
-            self.epsilon,
+            self.epsilon_threshold,
             self.epsilon_decay_1,
             self.epsilon_decay_2
         ).replace('.','')
