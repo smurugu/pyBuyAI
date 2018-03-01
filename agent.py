@@ -27,7 +27,7 @@ class Player(object):
         self.S = S
         self.Q = None
         self.R = None
-        self.path_df = pd.DataFrame(columns=['episode','bidding_round','prev_state_index','prev_state_label','action_index','bid','alpha','gamma','epsilon'])
+        self.path_df = pd.DataFrame(columns=['episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon'])
         if type(S) == list:
             self.state_dict = dict(zip(list(range(len(S))), S))
 
@@ -171,7 +171,7 @@ class Player(object):
     def write_path_log_entry(self, csv_path=None, log_args=()):
 
         if csv_path is None:
-            csv_path = self.get_serialised_file_name() + '_path.hdf'
+            csv_path = self.get_serialised_file_name() + '.hdf'
 
         if os.path.isfile(csv_path):
             # write single row only
@@ -202,20 +202,29 @@ class Player(object):
             self.path_df.to_csv(csv_path, index=False)
             return False
 
+    def get_path_log_from_hdf(self,hdf_file):
+
+        return pd.read_csv(hdf_file,sep='#')
+
     def get_path_graphics(self,alpha=0.5,sub_plots=5,trial_intervals=None):
 
         df = self.path_df
+
         first = df['episode'].min()
         last = df['episode'].max()
         #cannot plot nan actions: replace these with -1
         df['bid'] = df['bid'].fillna(-1)
 
         if trial_intervals is None:
-            breaks = list(range(first, last, round((last - first) / sub_plots))) + [last]
+            breaks = list(range(first, last, int(round((last - first) / sub_plots)))) + [last]
             trial_intervals = [(breaks[i], breaks[i + 1]) for i in range(len(breaks) - 1)]
 
         fig, axs = plt.subplots(len(trial_intervals), 1, figsize=(15, 15), sharex=True, sharey=True,
                                 tight_layout=True)
+
+        if len(df) == 0:
+            logging.error('Agent.get_path_graphics : agent has empty path_df')
+            return (fig,axs)
 
         for i,intv in enumerate(trial_intervals):
             if df[df['episode']==min(intv)]['episode'].count() > 0:

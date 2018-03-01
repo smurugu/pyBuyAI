@@ -11,7 +11,7 @@ def main():
     Run auction
     """
     # Game parameters
-    episodes = 10000
+    episodes = 15000
     initial_state_random = False
 
     # Environment parameters
@@ -24,8 +24,8 @@ def main():
     gamma = 0.5
     epsilon = 1
     epsilon_decay_1 = 0.9999
-    epsilon_decay_2 = 0.999
-    epsilon_threshold = 0.6
+    epsilon_decay_2 = 0.99
+    epsilon_threshold = 0.4
     agent_valuation = price_levels * 0.7
 
     S = env.get_possible_states(price_levels,num_players)
@@ -38,6 +38,7 @@ def main():
         new_player.set_q()
         player_list = player_list + [new_player]
 
+    count = 0
     for i in range(episodes):
         logging.info('Begin episode {0} of {1}'.format(i, episodes - 1))
         s = env.get_initial_state(S, initial_state_random)
@@ -48,8 +49,17 @@ def main():
             for p in player_list:
                 a = p.select_action(t,s)
                 path = path + [a]
+                p.write_path_log_entry(log_args=(i, t, s, a))
+                Qmatold = p.Q
                 p.update_q(t, s, a, is_final_period)
-                p.update_path_log(i, t, s, a)
+                if Qmatold == p.Q:
+                    count = count+1
+                else:
+                    count = 0
+
+                if count > threshold:
+                    p.trigger_episilon_treshold()
+                #p.update_path_log(i, t, s, a)
                 s = a
 
         p.update_epsilon()
@@ -58,9 +68,13 @@ def main():
     logging.info('All episodes complete, printing path history for all agents...')
 
     for i,player in enumerate(player_list):
+        player.path_df = player.get_path_log_from_hdf(player.get_serialised_file_name()+'.hdf')
         player.serialise_agent()
         fig,axs = player.get_path_graphics()
         fig.savefig(player.get_serialised_file_name()+'.png')
+        fig.show()
+
+    return
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),
