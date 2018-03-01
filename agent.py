@@ -9,13 +9,14 @@ import seaborn as sns
 import pickle as pck
 import json
 import os
+from math import ceil
 
 class Player(object):
     """
     This is an agent
     Default values 0, 0, 0, 0, 0, 0, 0, 0, []
     """
-    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0):
+    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, stationaryQ_episodes=0):
         self.player_id = player_id
         self.alpha = alpha
         self.gamma = gamma
@@ -27,9 +28,12 @@ class Player(object):
         self.S = S
         self.Q = None
         self.R = None
-        self.path_df = pd.DataFrame(columns=['episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon'])
+        self.path_df = pd.DataFrame(columns=['episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','reward'])
         if type(S) == list:
             self.state_dict = dict(zip(list(range(len(S))), S))
+        self.stationaryQ_episodes = stationaryQ_episodes
+        self.Q_converged = None
+        self.rewards_vector = None
 
     def get_r(self, S, bid_periods, agent_valuation=None):
         # allow override of agent_valuation if desired: default to self.value if not
@@ -116,8 +120,6 @@ class Player(object):
 
     def get_reward(self,t,s,a):
         r = self.R[t, s, a]
-        logging.info('Reward for player {0} in time period {1} for action {2} from state {3} = {4}'.format(
-            self.player_id, t, a, s, r))
         return r
 
     def update_q(self,t,s,a,is_final_period:bool):
@@ -128,6 +130,8 @@ class Player(object):
         Qold = self.Q[t,s,a]
 
         r = self.get_reward(t,s,a)
+        logging.info('Reward for player {0} in time period {1} for action {2} from state {3} = {4}'.format(
+            self.player_id, t, a, s, r))
 
         # check available actions and associated q-values for new state: assume greedy policy choice of action for a2
         t2 = t+1 if not is_final_period else t
@@ -146,6 +150,27 @@ class Player(object):
         logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
         return self.Q
 
+    def add_to_stationaryQ_episodes(self):
+        self.stationaryQ_episodes += 1
+        return self.stationaryQ_episodes
+
+    def reset_stationaryQ_episodes(self):
+        self.stationaryQ_episodes = 0
+        return self.stationaryQ_episodes
+
+    def set_Q_converged(self, episode):
+        self.Q_converged = episode
+        return self.Q_converged
+
+    def set_rewards_vector(self, episodes):
+        rewards_vector = []
+        for k in range(0,int(ceil(episodes/1000))):
+            start_idx = int(k*1000)
+            end_idx = int((k+1)*1000)
+            rewards_vector.append(sum(self.path_df.iloc[start_idx:end_idx]['reward'])/1000)
+        self.rewards_vector = rewards_vector
+        return self.rewards_vector
+
     def update_epsilon(self,rounding_amt=7):
         if self.epsilon > self.epsilon_threshold:
             epsilon = self.epsilon * self.epsilon_decay_1
@@ -155,7 +180,7 @@ class Player(object):
         self.epsilon = round(epsilon,rounding_amt)
 
     def get_path_log_entry(self, episode, bidding_round, prev_state_index, action_index):
-        #'episode','bidding_round','prev_state_index','prev_state_label','action_index','bid','alpha','gamma','epsilon'
+        #'episode','bidding_round','prev_state_index','prev_state_label','action_index','bid','alpha','gamma','epsilon','reward'
         row_df = pd.DataFrame(index=[0],columns=self.path_df.columns)
         for col in ['episode','bidding_round','prev_state_index','action_index']:
             row_df[col] = locals()[col]
@@ -165,6 +190,7 @@ class Player(object):
 
         row_df['prev_state_label'] = str(self.S[prev_state_index])
         row_df['bid'] = self.S[action_index].current_bids[self.player_id]
+        row_df['reward'] = self.get_reward(bidding_round, prev_state_index, action_index)
 
         return row_df
 
@@ -240,6 +266,7 @@ class Player(object):
         fig.tight_layout()
 
         return (fig,axs)
+
 
     def get_serialised_file_name(self):
         T,S,A = np.shape(self.R)

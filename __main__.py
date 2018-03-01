@@ -2,6 +2,9 @@ import logging
 import agent
 import environment as env
 import datetime as dt
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
 def main():
     """
@@ -11,8 +14,9 @@ def main():
     Run auction
     """
     # Game parameters
-    episodes = 15000
+    episodes = 15
     initial_state_random = False
+    stationaryQ_threshold = 5
 
     # Environment parameters
     bid_periods = 5
@@ -38,7 +42,6 @@ def main():
         new_player.set_q()
         player_list = player_list + [new_player]
 
-    count = 0
     for i in range(episodes):
         logging.info('Begin episode {0} of {1}'.format(i, episodes - 1))
         s = env.get_initial_state(S, initial_state_random)
@@ -52,29 +55,50 @@ def main():
                 p.write_path_log_entry(log_args=(i, t, s, a))
                 Qmatold = p.Q
                 p.update_q(t, s, a, is_final_period)
-                if Qmatold == p.Q:
-                    count = count+1
+                if np.array_equal(Qmatold, p.Q):
+                    p.add_to_stationaryQ_episodes()
                 else:
-                    count = 0
-
-                if count > threshold:
-                    p.trigger_episilon_treshold()
+                    p.reset_stationaryQ_episodes()
+                if p.stationaryQ_episodes > stationaryQ_threshold:
+                    p.set_Q_converged(i)
                 #p.update_path_log(i, t, s, a)
                 s = a
-
-        p.update_epsilon()
+        for p in player_list:
+            p.update_epsilon()
         path = [(ac, S[ac]) for ac in path]
         logging.info('Auction complete, path taken: {0}'.format(path))
     logging.info('All episodes complete, printing path history for all agents...')
 
+    results_df = pd.DataFrame(columns=['Player ID','Episodes Completed','Episodes to Q Convergence','Rewards per Episode'])
     for i,player in enumerate(player_list):
         player.path_df = player.get_path_log_from_hdf(player.get_serialised_file_name()+'.hdf')
         player.serialise_agent()
+        results_df.loc[i] = [i, episodes, player.Q_converged, round(sum(player.path_df['reward'])/episodes, 2)]
+        player.set_rewards_vector(episodes)
+        print(player.rewards_vector)
         fig,axs = player.get_path_graphics()
         fig.savefig(player.get_serialised_file_name()+'.png')
         fig.show()
 
+    results_df.to_csv(env.get_environment_level_file_name(episodes, bid_periods, price_levels, num_players)+'.csv', index=False)
+    rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players)
+
     return
+
+def rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players):
+    """
+    Plot a graph showing how each players reward rate varied throughout the process
+    """
+    fig = plt.figure()
+    ax = fig.add_axes([0, 0, 1, 1, ])
+    for p in player_list:
+        ax.plot(p.rewards_vector, label='Player {p}'.format(p=p.player_id))
+    ax.set_xlabel('Thousand Episodes')
+    ax.set_ylabel('Mean Reward per Episode')
+    ax.set_title('Mean Rewards per Episode')
+    ax.legend()
+    fig.savefig(env.get_environment_level_file_name(episodes, bid_periods, price_levels, num_players)+'.png')
+    return fig, ax
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),

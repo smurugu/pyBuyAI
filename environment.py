@@ -61,3 +61,8 @@ def get_winner(state):
 
 def define_state():
     return collections.namedtuple('State', 'current_winner current_bids')
+
+
+def get_environment_level_file_name(episodes, bid_periods, price_levels, num_players):
+    file_name = 'Auction_E{0}_BP{1}_PL{2}_NP{3}'.format(episodes, bid_periods, price_levels, num_players)
+    return file_name
