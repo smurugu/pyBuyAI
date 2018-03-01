@@ -15,8 +15,9 @@ class Player(object):
     This is an agent
     Default values 0, 0, 0, 0, 0, 0, 0, 0, []
     """
-    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0):
+    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, print_directory='.'):
         self.player_id = player_id
+        self.print_directory = print_directory
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -192,16 +193,6 @@ class Player(object):
         self.path_df = self.path_df.append(self.get_path_log_entry(episode, bidding_round, prev_state, action))
         return self.path_df
 
-    def print_path_log(self, csv_path):
-        try:
-            self.path_df.to_csv(csv_path,index=False)
-            return True
-        except Exception as ex:
-            logging.error('Unable to print csv: {0} \n Trying again with random filename'.format(csv_path,ex))
-            csv_path = csv_path.replace('.csv','_file-id-'+str(uuid.uuid4().fields[2])+'.csv')
-            self.path_df.to_csv(csv_path, index=False)
-            return False
-
     def get_path_log_from_hdf(self,hdf_file):
 
         return pd.read_csv(hdf_file,sep='#')
@@ -210,14 +201,19 @@ class Player(object):
 
         df = self.path_df
 
-        first = df['episode'].min()
-        last = df['episode'].max()
         #cannot plot nan actions: replace these with -1
         df['bid'] = df['bid'].fillna(-1)
 
         if trial_intervals is None:
-            breaks = list(range(first, last, int(round((last - first) / sub_plots)))) + [last]
-            trial_intervals = [(breaks[i], breaks[i + 1]) for i in range(len(breaks) - 1)]
+            first = df['episode'].min()
+            last = df['episode'].max()
+            if first == last or sub_plots==1:
+                trial_intervals = [(first,last)]
+            else:
+                interval = int(round((last - first) / sub_plots))
+                interval = interval if interval > 0 else 1
+                breaks = list(range(first, last, interval)) + [last]
+                trial_intervals = [(breaks[i], breaks[i + 1]) for i in range(len(breaks) - 1)]
 
         fig, axs = plt.subplots(len(trial_intervals), 1, figsize=(15, 15), sharex=True, sharey=True,
                                 tight_layout=True)
@@ -253,6 +249,8 @@ class Player(object):
             self.epsilon_decay_1,
             self.epsilon_decay_2
         ).replace('.','')
+        env.check_and_create_directory(self.print_directory)
+        file_name = os.path.join(self.print_directory,file_name)
         return file_name
 
     def serialise_agent(self):

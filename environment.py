@@ -2,6 +2,7 @@ import collections
 import itertools
 import logging
 import numpy as np
+import os
 
 def get_possible_states(num_price_levels, num_players):
     """
@@ -61,3 +62,14 @@ def get_winner(state):
 
 def define_state():
     return collections.namedtuple('State', 'current_winner current_bids')
+
+def check_and_create_directory(dir):
+    if not os.path.isdir(dir):
+        try:
+            os.mkdir(dir)
+            logging.info('Created directory {0}'.format(dir))
+        except Exception as ex:
+            logging.error('Unable to create directory {0} \n Error:{1}'.format(dir,ex))
+            return False
+
+
