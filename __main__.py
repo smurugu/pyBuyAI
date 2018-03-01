@@ -11,7 +11,7 @@ def main():
     Run auction
     """
     # Game parameters
-    episodes = 15000
+    episodes = 10
     initial_state_random = False
 
     # Environment parameters
@@ -50,16 +50,7 @@ def main():
                 a = p.select_action(t,s)
                 path = path + [a]
                 p.write_path_log_entry(log_args=(i, t, s, a))
-                Qmatold = p.Q
                 p.update_q(t, s, a, is_final_period)
-                if Qmatold == p.Q:
-                    count = count+1
-                else:
-                    count = 0
-
-                if count > threshold:
-                    p.trigger_episilon_treshold()
-                #p.update_path_log(i, t, s, a)
                 s = a
 
         p.update_epsilon()
