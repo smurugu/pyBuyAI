@@ -1,24 +1,8 @@
 import logging
 import agent
 import environment as env
-import datetime as dt
 import sys
-import ast
-
-def interpret_args(sys_args):
-    if len(sys_args) == 1:
-        return {}
-
-    arg_list = sys.argv[1].split(',')
-    arg_dict = {x.split(':')[0]: x.split(':')[1] for x in arg_list}
-
-    for k in arg_dict:
-        try:
-            arg_dict[k] = ast.literal_eval(arg_dict[k])
-        except Exception as ex:
-            print('interpret_args: unable to do literal eval for argument: {0} \n Error: {1}'.format(arg_dict[k], ex))
-
-    return arg_dict
+import graphics as grap
 
 def main():
     """
@@ -52,28 +36,31 @@ def main():
     for i in range(config_dict['episodes']):
         logging.info('Begin episode {0} of {1}'.format(i, config_dict['episodes'] - 1))
         s = env.get_initial_state(S, config_dict['initial_state_random'])
-        path = []
         for t in range(config_dict['bid_periods']):
             is_final_period = False if t < config_dict['bid_periods'] - 1 else True
             logging.info('Begin bidding period {0}, final period: {1}, state: {2}'.format(t, is_final_period, S[s]))
             for p in player_list:
                 a = p.select_action(t,s)
-                path = path + [a]
                 p.write_path_log_entry(log_args=(i, t, s, a))
                 p.update_q(t, s, a, is_final_period)
                 s = a
 
-        p.update_epsilon()
-        path = [(ac, S[ac]) for ac in path]
-        logging.info('Auction complete, path taken: {0}'.format(path))
-    logging.info('All episodes complete, printing path history for all agents...')
+    logging.info('All episodes complete, printing path history and auction results for all agents...')
 
+    path_dataframes = []
     for i,player in enumerate(player_list):
         player.path_df = player.get_path_log_from_hdf(player.get_serialised_file_name()+'.hdf')
+        path_dataframes.append(player.path_df)
         player.serialise_agent()
-        fig,axs = player.get_path_graphics()
+
+        fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
         fig.savefig(player.get_serialised_file_name()+'.png')
         fig.show()
+
+        #print results per agent: temporary
+        results_df = env.get_results_summary(path_dataframes, 1000)
+        results_path = player.get_serialised_file_name()+'.csv'
+        results_df.to_csv(results_path,index=False)
 
     return
 
@@ -82,7 +69,7 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
     logging.info('Process start')
 
-    config_dict = interpret_args(sys.argv)
+    config_dict = env.interpret_args(sys.argv)
     if len(config_dict) == 0:
         config_dict = {
             # Auction parameters
