@@ -162,6 +162,7 @@ class Player(object):
         self.Q_converged = episode
         return self.Q_converged
 
+
     def set_rewards_vector(self, episodes):
         rewards_vector = []
         for k in range(0,int(ceil(episodes/1000))):
