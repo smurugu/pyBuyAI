@@ -16,7 +16,7 @@ class Player(object):
     This is an agent
     Default values 0, 0, 0, 0, 0, 0, 0, 0, []
     """
-    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, stationaryQ_episodes=0):
+    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, q_convergence_threshold=100):
         self.player_id = player_id
         self.alpha = alpha
         self.gamma = gamma
@@ -28,11 +28,12 @@ class Player(object):
         self.S = S
         self.Q = None
         self.R = None
-        self.path_df = pd.DataFrame(columns=['episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','reward','periods_since_q_change'])
+        self.path_df = pd.DataFrame(columns=['episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','reward','periods_since_q_change','q_converged'])
         if type(S) == list:
             self.state_dict = dict(zip(list(range(len(S))), S))
-        self.stationaryQ_episodes = stationaryQ_episodes
-        self.Q_converged = None
+        self.stationaryQ_episodes = 0
+        self.q_convergence_threshold = q_convergence_threshold
+        self.Q_converged = False
         self.rewards_vector = None
 
     def get_r(self, S, bid_periods, agent_valuation=None):
@@ -149,6 +150,11 @@ class Player(object):
         else:
             self.reset_stationaryQ_episodes()
 
+        if self.stationaryQ_episodes > self.q_convergence_threshold:
+            #set convergence status to true if q matrix not changed for x periods
+            # do not reset to False again, even if q matrix is later updated
+            self.set_Q_converged(True)
+
         Q = self.Q
         Q[t,s,a] = Qnew
         self.Q = Q
@@ -163,8 +169,8 @@ class Player(object):
         self.stationaryQ_episodes = 0
         return self.stationaryQ_episodes
 
-    def set_Q_converged(self, episode):
-        self.Q_converged = episode
+    def set_Q_converged(self, converged:bool):
+        self.Q_converged = converged
         return self.Q_converged
 
     def set_rewards_vector(self, episodes):
@@ -197,6 +203,7 @@ class Player(object):
         row_df['bid'] = self.S[action_index].current_bids[self.player_id]
         row_df['reward'] = self.get_reward(bidding_round, prev_state_index, action_index)
         row_df['periods_since_q_change'] = self.stationaryQ_episodes
+        row_df['q_converged'] = self.Q_converged
 
         return row_df
 
@@ -237,7 +244,6 @@ class Player(object):
     def get_path_log_from_hdf(self,hdf_file):
 
         return pd.read_csv(hdf_file,sep='#')
-
 
     def get_serialised_file_name(self):
         T,S,A = np.shape(self.R)

@@ -15,7 +15,7 @@ def main():
     Run auction
     """
     # Game parameters
-    episodes = 15
+    episodes = 100
     initial_state_random = False
     stationaryQ_threshold = 5
 
@@ -32,13 +32,14 @@ def main():
     epsilon_decay_2 = 0.99
     epsilon_threshold = 0.4
     agent_valuation = price_levels * 0.7
+    q_convergence_threshold = 100
 
     S = env.get_possible_states(price_levels,num_players)
 
     # Initialise the players
     player_list = []
     for p in range(num_players):
-        new_player = agent.Player(p, alpha, gamma, epsilon, epsilon_decay_1, epsilon_decay_2, epsilon_threshold, agent_valuation, S)
+        new_player = agent.Player(p, alpha, gamma, epsilon, epsilon_decay_1, epsilon_decay_2, epsilon_threshold, agent_valuation, S, q_convergence_threshold)
         new_player.set_r(S,bid_periods,agent_valuation)
         new_player.set_q()
         player_list = player_list + [new_player]
@@ -46,28 +47,16 @@ def main():
     for i in range(episodes):
         logging.info('Begin episode {0} of {1}'.format(i, episodes - 1))
         s = env.get_initial_state(S, initial_state_random)
-        path = []
         for t in range(bid_periods):
             is_final_period = False if t < bid_periods - 1 else True
             logging.info('Begin bidding period {0}, final period: {1}, state: {2}'.format(t, is_final_period, S[s]))
             for p in player_list:
                 a = p.select_action(t,s)
-                path = path + [a]
-                p.write_path_log_entry(log_args=(i, t, s, a))
-                Qmatold = p.Q
                 p.update_q(t, s, a, is_final_period)
-                if np.array_equal(Qmatold, p.Q):
-                    p.add_to_stationaryQ_episodes()
-                else:
-                    p.reset_stationaryQ_episodes()
-                if p.stationaryQ_episodes > stationaryQ_threshold:
-                    p.set_Q_converged(i)
-                #p.update_path_log(i, t, s, a)
+                p.write_path_log_entry(log_args=(i, t, s, a))
+                p.update_epsilon()
                 s = a
-        for p in player_list:
-            p.update_epsilon()
-        path = [(ac, S[ac]) for ac in path]
-        logging.info('Auction complete, path taken: {0}'.format(path))
+
     logging.info('All episodes complete, printing path history for all agents...')
 
     results_df = pd.DataFrame(columns=['Player ID','Episodes Completed','Episodes to Q Convergence','Rewards per Episode'])
