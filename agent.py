@@ -28,7 +28,7 @@ class Player(object):
         self.S = S
         self.Q = None
         self.R = None
-        self.path_df = pd.DataFrame(columns=['episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','reward','periods_since_q_change','q_converged'])
+        self.path_df = pd.DataFrame(columns=['player_id','episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','reward','periods_since_q_change','q_converged'])
         if type(S) == list:
             self.state_dict = dict(zip(list(range(len(S))), S))
         self.stationaryQ_episodes = 0
@@ -204,6 +204,7 @@ class Player(object):
         row_df['reward'] = self.get_reward(bidding_round, prev_state_index, action_index)
         row_df['periods_since_q_change'] = self.stationaryQ_episodes
         row_df['q_converged'] = self.Q_converged
+        row_df['player_id'] = self.player_id
 
         return row_df
 
