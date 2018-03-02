@@ -57,25 +57,24 @@ def main():
                 p.update_epsilon()
                 s = a
 
-    logging.info('All episodes complete, printing path history for all agents...')
+    logging.info('All episodes complete, printing path history and auction results for all agents...')
 
-    results_df = pd.DataFrame(columns=['Player ID','Episodes Completed','Episodes to Q Convergence','Rewards per Episode'])
+    path_dataframes = []
     for i,player in enumerate(player_list):
         player.path_df = player.get_path_log_from_hdf(player.get_serialised_file_name()+'.hdf')
+        path_dataframes.append(player.path_df)
         player.serialise_agent()
-        results_df.loc[i] = [i, episodes, player.Q_converged, round(sum(player.path_df['reward'])/episodes, 2)]
-        player.set_rewards_vector(episodes)
-        print(player.rewards_vector)
+
         fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
         fig.savefig(player.get_serialised_file_name()+'.png')
         fig.show()
 
-    results_df.to_csv(env.get_environment_level_file_name(episodes, bid_periods, price_levels, num_players)+'.csv', index=False)
-    fig,axs = grap.rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players)
-    fig.show()
+        #print results per agent: temporary
+        results_df = env.get_results_summary(path_dataframes, 1000)
+        results_path = player.get_serialised_file_name()+'.csv'
+        results_df.to_csv(results_path,index=False)
 
     return
-
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),

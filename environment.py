@@ -1,7 +1,9 @@
+import pandas as pd
 import collections
 import itertools
 import logging
 import numpy as np
+from math import ceil
 
 def get_possible_states(num_price_levels, num_players):
     """
@@ -62,7 +64,55 @@ def get_winner(state):
 def define_state():
     return collections.namedtuple('State', 'current_winner current_bids')
 
-
 def get_environment_level_file_name(episodes, bid_periods, price_levels, num_players):
     file_name = 'Auction_E{0}_BP{1}_PL{2}_NP{3}'.format(episodes, bid_periods, price_levels, num_players)
     return file_name
+
+def calc_rewards_vector(path_df, reward_vector_interval:int):
+    rewards_vector = []
+    for k in range(0,int(ceil(path_df['episode'].max()/reward_vector_interval))):
+        start_idx = int(k*reward_vector_interval)
+        end_idx = int((k+1)*reward_vector_interval)
+        rewards_vector.append(sum(path_df.iloc[start_idx:end_idx]['reward'])/reward_vector_interval)
+    return rewards_vector
+
+def get_results_summary(path_dataframes:list,reward_vector_interval=1000):
+    """
+    Function reads several path_df dataframes (intended to be 1 per player for a single game)
+    and returns a results summary in results_df format
+    :param path_dataframes: path dataframes of players
+    :return: results dataframe
+    """
+    results_df = pd.DataFrame(columns=['Player ID', 'Total Episodes', 'Player Converged', 'Period Converged','Avg Reward','Avg Reward Vector'])
+
+    for path_df in path_dataframes:
+
+        players = path_df['player_id'].drop_duplicates()
+        if len(players) > 1:
+            logging.warning('get_results_summary: multiple players in the same path_df! Results will be wrong!')
+        player_id = players[0]
+
+        total_episodes = path_df['episode'].max()
+        convergence_status = path_df['q_converged'].tail(1).values[0]
+        if convergence_status:
+            period_converged = path_df[path_df['q_converged']]['episode'].max()
+        else:
+            period_converged = np.nan
+
+        reward_per_episode = path_df.groupby(['episode'])['reward'].sum()
+        avg_reward = round(sum(reward_per_episode)/total_episodes,2)
+
+        reward_vector = calc_rewards_vector(path_df,reward_vector_interval)
+
+        row_df = pd.DataFrame(columns=results_df.columns,index=[0])
+        row_df['Player ID'] = player_id
+        row_df['Total Episodes'] = total_episodes
+        row_df['Player Converged'] = convergence_status
+        row_df['Period Converged'] = period_converged
+        row_df['Avg Reward'] = avg_reward
+        row_df['Avg Reward Vector'] = '_'.join([str(round(x,4)) for x in reward_vector])
+
+        results_df = results_df.append(row_df)
+
+        return results_df
+

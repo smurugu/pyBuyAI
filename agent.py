@@ -9,7 +9,7 @@ import seaborn as sns
 import pickle as pck
 import json
 import os
-from math import ceil
+
 
 class Player(object):
     """
@@ -173,14 +173,7 @@ class Player(object):
         self.Q_converged = converged
         return self.Q_converged
 
-    def set_rewards_vector(self, episodes):
-        rewards_vector = []
-        for k in range(0,int(ceil(episodes/1000))):
-            start_idx = int(k*1000)
-            end_idx = int((k+1)*1000)
-            rewards_vector.append(sum(self.path_df.iloc[start_idx:end_idx]['reward'])/1000)
-        self.rewards_vector = rewards_vector
-        return self.rewards_vector
+
 
     def update_epsilon(self,rounding_amt=7):
         if self.epsilon > self.epsilon_threshold:
