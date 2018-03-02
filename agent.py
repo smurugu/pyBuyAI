@@ -28,7 +28,7 @@ class Player(object):
         self.S = S
         self.Q = None
         self.R = None
-        self.path_df = pd.DataFrame(columns=['episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','reward'])
+        self.path_df = pd.DataFrame(columns=['episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','reward','periods_since_q_change'])
         if type(S) == list:
             self.state_dict = dict(zip(list(range(len(S))), S))
         self.stationaryQ_episodes = stationaryQ_episodes
@@ -144,6 +144,11 @@ class Player(object):
         Qnew = round(Qold + self.alpha*(r + self.gamma*Qnext - Qold),2)
         logging.info('Q({0},{1}) = {2} using alpha = {3} and gamma = {4}'.format(s,a,Qnew,self.alpha,self.gamma))
 
+        if Qnew==Qold:
+            self.add_to_stationaryQ_episodes()
+        else:
+            self.reset_stationaryQ_episodes()
+
         Q = self.Q
         Q[t,s,a] = Qnew
         self.Q = Q
@@ -161,7 +166,6 @@ class Player(object):
     def set_Q_converged(self, episode):
         self.Q_converged = episode
         return self.Q_converged
-
 
     def set_rewards_vector(self, episodes):
         rewards_vector = []
@@ -192,6 +196,7 @@ class Player(object):
         row_df['prev_state_label'] = str(self.S[prev_state_index])
         row_df['bid'] = self.S[action_index].current_bids[self.player_id]
         row_df['reward'] = self.get_reward(bidding_round, prev_state_index, action_index)
+        row_df['periods_since_q_change'] = self.stationaryQ_episodes
 
         return row_df
 
@@ -232,41 +237,6 @@ class Player(object):
     def get_path_log_from_hdf(self,hdf_file):
 
         return pd.read_csv(hdf_file,sep='#')
-
-    def get_path_graphics(self,alpha=0.5,sub_plots=5,trial_intervals=None):
-
-        df = self.path_df
-
-        first = df['episode'].min()
-        last = df['episode'].max()
-        #cannot plot nan actions: replace these with -1
-        df['bid'] = df['bid'].fillna(-1)
-
-        if trial_intervals is None:
-            breaks = list(range(first, last, int(round((last - first) / sub_plots)))) + [last]
-            trial_intervals = [(breaks[i], breaks[i + 1]) for i in range(len(breaks) - 1)]
-
-        fig, axs = plt.subplots(len(trial_intervals), 1, figsize=(15, 15), sharex=True, sharey=True,
-                                tight_layout=True)
-
-        if len(df) == 0:
-            logging.error('Agent.get_path_graphics : agent has empty path_df')
-            return (fig,axs)
-
-        for i,intv in enumerate(trial_intervals):
-            if df[df['episode']==min(intv)]['episode'].count() > 0:
-                eps = df[df['episode']==min(intv)].head(1)['epsilon'].values[0]
-            else:
-                eps = np.nan
-            axs[i].set_title('Trials {0} to {1} using epsilon = {2}'.format(intv[0],intv[1],eps))
-            axs[i].set_xlabel('Bid period')
-            axs[i].set_ylabel('Bid Amount')
-            for t in range(intv[0],intv[1]):
-                axs[i].plot(df[df['episode']==t]['bidding_round'],df[df['episode']==t]['bid'],alpha=alpha)
-
-        fig.tight_layout()
-
-        return (fig,axs)
 
 
     def get_serialised_file_name(self):

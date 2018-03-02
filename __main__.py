@@ -5,6 +5,7 @@ import datetime as dt
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import graphics as grap
 
 def main():
     """
@@ -76,29 +77,16 @@ def main():
         results_df.loc[i] = [i, episodes, player.Q_converged, round(sum(player.path_df['reward'])/episodes, 2)]
         player.set_rewards_vector(episodes)
         print(player.rewards_vector)
-        fig,axs = player.get_path_graphics()
+        fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
         fig.savefig(player.get_serialised_file_name()+'.png')
         fig.show()
 
     results_df.to_csv(env.get_environment_level_file_name(episodes, bid_periods, price_levels, num_players)+'.csv', index=False)
-    rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players)
+    fig,axs = grap.rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players)
+    fig.show()
 
     return
 
-def rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players):
-    """
-    Plot a graph showing how each players reward rate varied throughout the process
-    """
-    fig = plt.figure()
-    ax = fig.add_axes([0, 0, 1, 1, ])
-    for p in player_list:
-        ax.plot(p.rewards_vector, label='Player {p}'.format(p=p.player_id))
-    ax.set_xlabel('Thousand Episodes')
-    ax.set_ylabel('Mean Reward per Episode')
-    ax.set_title('Mean Rewards per Episode')
-    ax.legend()
-    fig.savefig(env.get_environment_level_file_name(episodes, bid_periods, price_levels, num_players)+'.png')
-    return fig, ax
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),
