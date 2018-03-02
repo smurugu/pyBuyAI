@@ -56,11 +56,10 @@ def path_graphics(path_df,alpha=0.5,sub_plots=5,trial_intervals=None):
 
 
 if __name__ == '__main__':
-    file_name = 'player0_T4_S11_a08_g05_eth04_ed1-09999_ed2-099.npy'
-    player = agent.Player().load_serialised_agent(file_name)
-    #player.path_df = player.get_path_log_from_hdf(player.get_serialised_file_name()+'.hdf')
+    file_name = 'player0_T4_S11_a08_g05_eth04_ed1-09999_ed2-099.hdf'
+    path_df = pd.read_csv(file_name,sep='#')
 
-    fig, axs = player.get_path_graphics(alpha=0.03,sub_plots=5)
+    fig, axs = path_graphics(path_df,alpha=0.03,sub_plots=5)
     plt.show()
     fig.savefig(file_name.replace('.npy','.png'))
     print('lala, end')

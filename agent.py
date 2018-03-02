@@ -16,8 +16,7 @@ class Player(object):
     This is an agent
     Default values 0, 0, 0, 0, 0, 0, 0, 0, []
     """
-    def __init__(self, print_directory:str, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, q_convergence_threshold=100):
-
+    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, q_convergence_threshold=100, print_directory=r'.'):
         self.player_id = player_id
         self.print_directory = print_directory
         self.alpha = alpha

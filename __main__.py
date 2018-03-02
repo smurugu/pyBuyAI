@@ -1,8 +1,12 @@
 import logging
 import agent
 import environment as env
+import os
 import sys
 import graphics as grap
+import datetime as dt
+from math import ceil
+import pickle
 
 def main():
     """
@@ -18,16 +22,17 @@ def main():
     player_list = []
     for p in range(config_dict['num_players']):
         new_player = agent.Player(
-            p,
-            config_dict['alpha'],
-            config_dict['gamma'],
-            config_dict['epsilon'],
-            config_dict['epsilon_decay_1'],
-            config_dict['epsilon_decay_2'],
-            config_dict['epsilon_threshold'],
-            config_dict['agent_valuation'][p],
-            S,
-            config_dict['output_folder']
+            player_id=p,
+            alpha=config_dict['alpha'],
+            gamma=config_dict['gamma'],
+            epsilon=config_dict['epsilon'],
+            epsilon_decay_1=config_dict['epsilon_decay_1'],
+            epsilon_decay_2=config_dict['epsilon_decay_2'],
+            epsilon_threshold=config_dict['epsilon_threshold'],
+            agent_valuation=config_dict['agent_valuation'][p],
+            S=S,
+            q_convergence_threshold=config_dict['q_convergence_threshold'],
+            print_directory=config_dict['output_folder']
         )
         new_player.set_r(S,config_dict['bid_periods'])
         new_player.set_q()
@@ -43,6 +48,7 @@ def main():
                 a = p.select_action(t,s)
                 p.write_path_log_entry(log_args=(i, t, s, a))
                 p.update_q(t, s, a, is_final_period)
+                p.update_epsilon()
                 s = a
 
     logging.info('All episodes complete, printing path history and auction results for all agents...')
@@ -58,9 +64,17 @@ def main():
         fig.show()
 
         #print results per agent: temporary
-        results_df = env.get_results_summary(path_dataframes, 1000)
+        results_df = env.get_results_summary(path_dataframes, ceil(config_dict['episodes']/10))
         results_path = player.get_serialised_file_name()+'.csv'
         results_df.to_csv(results_path,index=False)
+
+        config_dict['path_df'] = player.path_df.to_dict()
+        config_dict['results_df'] = results_df.to_dict()
+
+        pickle_file = 'Player'+str(p.player_id)+'_'+config_dict['output_file']+'.pck'
+        pickle_path = os.path.join(config_dict['output_folder'],pickle_file)
+        with open(pickle_path, 'wb') as fp:
+            pickle.dump(config_dict, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
     return
 
@@ -77,12 +91,14 @@ if __name__ == '__main__':
             'initial_state_random': False,
 
             # Environment parameters
-            'bid_periods': 1,
+            'bid_periods': 10,
             'price_levels': 10,
             'num_players': 1,
+            'q_convergence_threshold':100,
 
             # Script run parameters
             'output_folder':r'./results',
+            'output_file':'results.bat',
 
             # Player parameters
             'alpha': 0.8,

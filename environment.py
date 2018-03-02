@@ -139,6 +139,6 @@ def interpret_args(sys_args):
         try:
             arg_dict[k] = ast.literal_eval(arg_dict[k])
         except Exception as ex:
-            print('interpret_args: unable to do literal eval for argument: {0} \n Error: {1}'.format(arg_dict[k], ex))
+            logging.error('interpret_args: unable to do literal eval for argument: {0} \n Error: {1}'.format(arg_dict[k], ex))
 
     return arg_dict
