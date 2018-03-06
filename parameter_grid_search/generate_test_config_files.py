@@ -26,17 +26,17 @@ output_file:%~n0
 python.exe ..\__main__.py %ARG_STRING%"""
 
 replace_dict = {
-    'episodes':[10],
+    'episodes':[10000],
     'initial_state_random':[False],
     'bid_periods':[4],
     'price_levels':[10],
     'num_players':[1],
     'alpha':[0.8],
-    'gamma':[0.5,1],
+    'gamma':[1],
     'epsilon':[1],
-    'epsilon_decay_1':[0.9999],
-    'epsilon_decay_2':[0.99],
-    'epsilon_threshold':[0.2,0.4,0.6],
+    'epsilon_decay_1':[0.9999,0.999,0.99,0.9],
+    'epsilon_decay_2':[0.999,0.99,0.9],
+    'epsilon_threshold':[0.4],
     'agent_valuation':[[7]],
     'q_convergence_threshold':[100]
 }
