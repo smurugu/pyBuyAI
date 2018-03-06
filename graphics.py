@@ -60,10 +60,22 @@ def plot_grid_search_heatmap(param1,param2,dependent_var,df):
     sns.heatmap(df2,ax=axs)
     return (fig,axs)
 
-if __name__ == '__main__':
-    file_name = './parameter_grid_search/results/grid_search_results_d5a463a5-2be5-4bc7-97ac-c9d6ca462afd.hdf'
-    df = pd.read_csv(file_name,sep='#')
+def plot_rewards_per_episode(df):
+    df2 = df[df['bidding_round'] == max(df['bidding_round'])]
 
-    fig,ax = plot_grid_search_heatmap('epsilon_decay_1','epsilon_decay_2','Period Converged',df)
+    fig, axs = plt.subplots(1)
+    plt.plot(df2['episode'], df2['reward'])
+    plt.show()
+
+    return (fig,axs)
+
+if __name__ == '__main__':
+    file_name = './results/player0_T3_S11_a08_g05_eth04_ed1-0999_ed2-099.hdf'
+    df = pd.read_csv(file_name,sep='#')
+    df2 = df[df['bidding_round'] == max(df['bidding_round'])]
+
+    fig = plt.figure()
+    plt.plot(df2['episode'], df2['reward'])
+    plt.show()
 
     print('lala, end')
