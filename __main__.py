@@ -70,6 +70,7 @@ def main():
 
         config_dict['path_df'] = player.path_df.to_dict()
         config_dict['results_df'] = results_df.to_dict()
+        config_dict['player_id'] = player.player_id
 
         pickle_file = 'Player'+str(p.player_id)+'_'+config_dict['output_file']+'.pck'
         pickle_path = os.path.join(config_dict['output_folder'],pickle_file)
