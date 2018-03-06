@@ -54,12 +54,14 @@ def path_graphics(path_df,alpha=0.5,sub_plots=5,trial_intervals=None):
 
     return (fig,axs)
 
+def plot_grid_search_heatmap(param1,param2,dependent_var,df):
+    fig, axs = plt.subplots(1)
+    df2 = df.pivot(param1,param2,dependent_var)
+    sns.heatmap(df2,ax=axs)
+    return (fig,axs)
 
 if __name__ == '__main__':
-    file_name = 'player0_T4_S11_a08_g05_eth04_ed1-09999_ed2-099.hdf'
-    path_df = pd.read_csv(file_name,sep='#')
+    file_name = './parameter_grid_search/results/grid_search_results_4ce68808-5bcb-41c8-ba33-80f7403116d6.hdf'
+    df = pd.read_csv(file_name,sep='#')
 
-    fig, axs = path_graphics(path_df,alpha=0.03,sub_plots=5)
-    plt.show()
-    fig.savefig(file_name.replace('.npy','.png'))
     print('lala, end')
