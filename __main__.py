@@ -38,7 +38,12 @@ def main():
         new_player.set_q()
         player_list = player_list + [new_player]
 
-    for i in range(config_dict['episodes']):
+    all_players_converged = False
+    i = 0
+    while i<config_dict['episodes']+1 and not(all_players_converged):
+        i = i + 1
+        all_players_converged = all([x.Q_converged for x in player_list])
+
         logging.info('Begin episode {0} of {1}'.format(i, config_dict['episodes'] - 1))
         s = env.get_initial_state(S, config_dict['initial_state_random'])
         for t in range(config_dict['bid_periods']):
@@ -88,14 +93,14 @@ if __name__ == '__main__':
     if len(config_dict) == 0:
         config_dict = {
             # Auction parameters
-            'episodes': 10,
+            'episodes': 100000,
             'initial_state_random': False,
 
             # Environment parameters
-            'bid_periods': 10,
+            'bid_periods': 2,
             'price_levels': 10,
             'num_players': 1,
-            'q_convergence_threshold':100,
+            'q_convergence_threshold':1000,
 
             # Script run parameters
             'output_folder':r'./results',
