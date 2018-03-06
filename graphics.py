@@ -61,7 +61,9 @@ def plot_grid_search_heatmap(param1,param2,dependent_var,df):
     return (fig,axs)
 
 if __name__ == '__main__':
-    file_name = './parameter_grid_search/results/grid_search_results_4ce68808-5bcb-41c8-ba33-80f7403116d6.hdf'
+    file_name = './parameter_grid_search/results/grid_search_results_d5a463a5-2be5-4bc7-97ac-c9d6ca462afd.hdf'
     df = pd.read_csv(file_name,sep='#')
+
+    fig,ax = plot_grid_search_heatmap('epsilon_decay_1','epsilon_decay_2','Period Converged',df)
 
     print('lala, end')
