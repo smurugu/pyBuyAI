@@ -9,16 +9,18 @@ import seaborn as sns
 import pickle as pck
 import json
 import os
-
+import uuid
+from cvxopt import matrix, solvers
 
 class Player(object):
     """
     This is an agent
     Default values 0, 0, 0, 0, 0, 0, 0, 0, []
     """
-    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, q_convergence_threshold=100, print_directory=r'.'):
+    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, q_convergence_threshold=100, print_directory=r'.',q_update_mode='foe'):
         self.player_id = player_id
         self.print_directory = print_directory
+        self.file_name = self.set_serialised_file_name()
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -36,6 +38,7 @@ class Player(object):
         self.q_convergence_threshold = q_convergence_threshold
         self.Q_converged = False
         self.rewards_vector = None
+        self.q_update_mode = q_update_mode
 
     def get_r(self, S, bid_periods, agent_valuation=None):
         # allow override of agent_valuation if desired: default to self.value if not
@@ -65,7 +68,7 @@ class Player(object):
         filt5 = np.triu(np.array([[True for y in S] for x in S]), 1)
         R3D[bid_periods - 1, filt5] = np.nan
         values = np.array(
-            [[(agent_valuation - max(y.current_bids) if y.current_winner == self.player_id else 0) for y in S] for x in S])
+            [[(agent_valuation - max(y.current_bids) + 1 if y.current_winner == self.player_id else 0) for y in S] for x in S])
         R3D[bid_periods - 1, :, :] = np.multiply(R3D[bid_periods - 1, :, :] + 1, values)
 
         return R3D
@@ -124,7 +127,37 @@ class Player(object):
         r = self.R[t, s, a]
         return r
 
+    def get_current_qmatrix(self,t,s):
+        """
+        Function returns an action*action grid of q values for the given player
+        :param t:
+        :param s:
+        :return:
+        """
+        action_tuples = [s.current_bids for s in self.S]
+        action_qvalues = dict(zip(action_tuples,self.Q[t, s]))
+        players = len(action_tuples[0])
+        actions_p0 = list(set([cb[0] for cb in action_tuples]))
+
+        qvalue_array = np.zeros((len(actions_p0),)*players)
+        for bid_combo in action_qvalues:
+            bid_combo_ind = tuple(actions_p0.index(b) for b in bid_combo)
+            qvalue_array[bid_combo_ind] = action_qvalues[bid_combo]
+
+        return qvalue_array
+
     def update_q(self,t,s,a,is_final_period:bool):
+        if self.q_update_mode == 'nash':
+            return self.update_q_qlearning(t,s,a,is_final_period)
+        elif self.q_update_mode == 'friend':
+            return self.update_q_friends(t,s,a,is_final_period)
+        elif self.q_update_mode == 'foe':
+            return self.update_q_foe(t,s,a,is_final_period)
+        else:
+            logging.error("q_update_mode parameter not accepted: '{}'. Accepted values: " \
+                          "'nash','friend','foe'")
+
+    def update_q_qlearning(self,t,s,a,is_final_period:bool):
         """
         Agent updates its Q matrix
         """
@@ -141,9 +174,95 @@ class Player(object):
         logging.info('Updating Q value (evaluating selection of greedy action for T+1)')
         a2 = self.select_action_greedy(t2,s2)
         Qnext = self.Q[t2,s2,a2]
+        V = Qnext
+        # 6) Use the Q-learning rule to calcualte the new Q(s,a) value and update the Q matrix accordingly
+        Qnew = round(Qold + self.alpha*(r + self.gamma*V - Qold),2)
+        logging.info('Q({0},{1}) = {2} using alpha = {3} and gamma = {4}'.format(s,a,Qnew,self.alpha,self.gamma))
+
+        if Qnew==Qold:
+            self.add_to_stationaryQ_episodes()
+        else:
+            self.reset_stationaryQ_episodes()
+
+        if self.stationaryQ_episodes > self.q_convergence_threshold:
+            #set convergence status to true if q matrix not changed for x periods
+            # do not reset to False again, even if q matrix is later updated
+            self.set_Q_converged(True)
+
+        Q = self.Q
+        Q[t,s,a] = Qnew
+        self.Q = Q
+        logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
+        return self.Q
+
+    def update_q_friends(self,t,s,a,is_final_period:bool):
+        """
+        Agent updates its Q matrix according to a friends rule,
+        ie the value of a state is the max Q value for the current state over all possible actions from all players
+
+        """
+        # 5) Check from the Q matrix the old Q vlue of the (s,a) pair and the values of the (s',a') that this agent thinks would follow
+        Qold = self.Q[t,s,a]
+
+        r = self.get_reward(t,s,a)
+        logging.info('Reward for player {0} in time period {1} for action {2} from state {3} = {4}'.format(
+            self.player_id, t, a, s, r))
+
+        # check available actions and associated q-values for new state: assume greedy policy choice of action for a2
+        t2 = t+1 if not is_final_period else t
+        s2 = a
+        logging.info('Updating Q value (evaluating selection of greedy action for T+1)')
+        V = max(self.Q[t2,s2]) #Vi(s) = max_a( Qi(s,a) ), where a represents the vector of actions by all players
+        #a2 = self.select_action_greedy(t2,s2)
+        #Qnext = self.Q[t2,s2,a2]
 
         # 6) Use the Q-learning rule to calcualte the new Q(s,a) value and update the Q matrix accordingly
-        Qnew = round(Qold + self.alpha*(r + self.gamma*Qnext - Qold),2)
+        Qnew = round(Qold + self.alpha*(r + self.gamma*V - Qold),2)
+        logging.info('Q({0},{1}) = {2} using alpha = {3} and gamma = {4}'.format(s,a,Qnew,self.alpha,self.gamma))
+
+        if Qnew==Qold:
+            self.add_to_stationaryQ_episodes()
+        else:
+            self.reset_stationaryQ_episodes()
+
+        if self.stationaryQ_episodes > self.q_convergence_threshold:
+            #set convergence status to true if q matrix not changed for x periods
+            # do not reset to False again, even if q matrix is later updated
+            self.set_Q_converged(True)
+
+        Q = self.Q
+        Q[t,s,a] = Qnew
+        self.Q = Q
+        logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
+        return self.Q
+
+    def update_q_foe(self,t,s,a,is_final_period:bool):
+        """
+        Agent updates its Q matrix according to a friends rule,
+        ie the value of a state is the max Q value for the current state over all possible actions from all players
+
+        """
+        # 5) Check from the Q matrix the old Q vlue of the (s,a) pair and the values of the (s',a') that this agent thinks would follow
+        Qold = self.Q[t,s,a]
+
+        r = self.get_reward(t,s,a)
+        logging.info('Reward for player {0} in time period {1} for action {2} from state {3} = {4}'.format(
+            self.player_id, t, a, s, r))
+
+        # check available actions and associated q-values for new state: assume greedy policy choice of action for a2
+        t2 = t+1 if not is_final_period else t
+        s2 = a
+        logging.info('Updating Q value (evaluating selection of greedy action for T+1)')
+
+        current_Q = self.get_current_qmatrix(t2,s2)
+        prime_objective = solve_maximin(current_Q)
+
+        V = prime_objective #Vi(s) = max_a( Qi(s,a) ), where a represents the vector of actions by all players
+        #a2 = self.select_action_greedy(t2,s2)
+        #Qnext = self.Q[t2,s2,a2]
+
+        # 6) Use the Q-learning rule to calcualte the new Q(s,a) value and update the Q matrix accordingly
+        Qnew = round(Qold + self.alpha*(r + self.gamma*V - Qold),2)
         logging.info('Q({0},{1}) = {2} using alpha = {3} and gamma = {4}'.format(s,a,Qnew,self.alpha,self.gamma))
 
         if Qnew==Qold:
@@ -228,7 +347,7 @@ class Player(object):
 
         return pd.read_csv(hdf_file,sep='#')
 
-    def get_serialised_file_name(self):
+    def get_serialised_file_name_old(self):
         T,S,A = np.shape(self.R)
         file_name = 'player{0}_T{1}_S{2}_a{3}_g{4}_eth{5}_ed1-{6}_ed2-{7}'.format(
             self.player_id,
@@ -243,6 +362,15 @@ class Player(object):
         env.check_and_create_directory(self.print_directory)
         file_name = os.path.join(self.print_directory,file_name)
         return file_name
+
+    def set_serialised_file_name(self):
+        file_name = str(uuid.uuid4())
+        env.check_and_create_directory(self.print_directory)
+        self.file_name = os.path.join(self.print_directory, file_name)
+        return self.file_name
+
+    def get_serialised_file_name(self):
+        return self.file_name
 
     def serialise_agent(self):
         """
@@ -281,3 +409,32 @@ class Player(object):
 
         return self
 
+def solve_maximin(q):
+
+    glpksolver = 'glpk'
+    solvers.options['glpk'] = {'msg_lev': 'GLP_MSG_OFF'}  # cvxopt 1.1.8
+    solvers.options['msg_lev'] = 'GLP_MSG_OFF'  # cvxopt 1.1.7
+    solvers.options['LPX_K_MSGLEV'] = 0  # previous versions
+
+    M = matrix(q).trans()
+    n = M.size[1]
+
+
+    A = np.hstack((np.ones((M.size[0], 1)), M))
+    #Constraint: All P > 0
+    eye_matrix = np.hstack((np.zeros((n, 1)), -np.eye(n)))
+
+    A = np.vstack((A, eye_matrix))
+    # Constraint: Sum(P) == 1
+    A = matrix(np.vstack((A, np.hstack((0,np.ones(n))), np.hstack((0,-np.ones(n))))))
+
+    #Create b Matrix
+    b = matrix(np.hstack((np.zeros(A.size[0] - 2), [1, -1])))
+
+    #Create C Matrix
+    c = matrix(np.hstack(([-1], np.zeros(n))))
+
+    sol = solvers.lp(c,A,b, solver=glpksolver)
+
+
+    return sol['primal objective']

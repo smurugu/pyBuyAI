@@ -60,19 +60,46 @@ def plot_grid_search_heatmap(param1,param2,dependent_var,df):
     sns.heatmap(df2,ax=axs)
     return (fig,axs)
 
+def plot_final_bids_heatmap(bids_df):
+    bids_df['freq'] = 1
+    piv = bids_df.fillna(-1).pivot_table(index=bids_df.columns[0], columns=bids_df.columns[1], values='freq', aggfunc='sum')
+    fig, axs = plt.subplots(1)
+    sns.heatmap(piv, ax=axs)
+    return (fig,axs)
+
 def plot_rewards_per_episode(df):
     df2 = df[df['bidding_round'] == max(df['bidding_round'])]
 
     fig, axs = plt.subplots(1)
     plt.plot(df2['episode'], df2['reward'])
-    plt.show()
+    #plt.show()
 
     return (fig,axs)
 
 if __name__ == '__main__':
-    file_name = './results/player0_T3_S11_a08_g05_eth04_ed1-0999_ed2-099.hdf'
+    file_name = r'./parameter_grid_search/results/grid_search_results_4ae7ca5f-5f8f-4301-b871-7c438d881617.hdf'
     df = pd.read_csv(file_name,sep='#')
-    df2 = df[df['bidding_round'] == max(df['bidding_round'])]
+    ept = 0.6
+    df2 = df[(df['bid_periods'] == 5) & (df['epsilon_threshold'] == ept)]
+
+    fig,axs=plot_grid_search_heatmap('epsilon_decay_1','epsilon_decay_2','Period Converged',df2)
+    fig.suptitle('Epsilon Threshold: ept')
+
+    fig, axs = plt.subplots(1, 3, figsize=(15, 15), sharex=True, sharey=True,
+                            tight_layout=True)
+    cbar_ax = fig.add_axes([.91, .3, .03, .4])
+
+    for i,th in enumerate([0.2,0.4,0.6]):
+        df2 = df[(df['bid_periods'] == 5) & (df['epsilon_threshold'] == th)]
+        df3 = df2.pivot('epsilon_decay_1','epsilon_decay_2','Period Converged')
+        im = sns.heatmap(df3,ax=axs[i],cbar=i == 0,cbar_ax=None if i else cbar_ax)
+        axs[i].set_title('Epsilon threshold: {0}'.format(th))
+
+    fig.suptitle('Episodes until convergence for epsilon decay configurations')
+
+    fig.subplots_adjust(right=0.8)
+    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+    fig.colorbar(im, cax=cbar_ax)
 
     fig = plt.figure()
     plt.plot(df2['episode'], df2['reward'])

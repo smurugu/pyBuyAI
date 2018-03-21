@@ -88,6 +88,30 @@ def calc_rewards_vector(path_df, reward_vector_interval:int):
         rewards_vector.append(sum(path_df.iloc[start_idx:end_idx]['reward'])/reward_vector_interval)
     return rewards_vector
 
+def get_last_x_bids_array(path_dataframes:list,n_games:int):
+    """
+    Function reads several path_df dataframes (intended to be 1 per player for a single game)
+    and returns the final bids of the last n_games in an n_games*n_players array
+    :param path_dataframes: path dataframes of players
+    :return: results dataframe
+    """
+    all_bids_df = pd.DataFrame()
+    for path_df in path_dataframes:
+        player_id = 'player_'+str(path_df['player_id'].min())
+        max_bid_rounds = path_df['bidding_round'].max()
+        first_episode_to_include = path_df['episode'].max() - n_games
+        first_episode_to_include if first_episode_to_include > 0 else 1
+
+        rounds_df = path_df[
+            (path_df['episode'] >= first_episode_to_include) & (path_df['bidding_round'] == max_bid_rounds)
+        ].sort_values(['episode'],ascending=True).reset_index()
+
+        bids_df = pd.DataFrame(columns=[player_id],data=rounds_df['bid'],index=rounds_df.index)
+
+        all_bids_df = pd.concat([all_bids_df,bids_df],axis=1)
+
+    return all_bids_df
+
 def get_results_summary(path_dataframes:list,reward_vector_interval=1000):
     """
     Function reads several path_df dataframes (intended to be 1 per player for a single game)

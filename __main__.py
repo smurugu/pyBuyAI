@@ -7,6 +7,10 @@ import graphics as grap
 import datetime as dt
 from math import ceil
 import pickle
+import matplotlib.pyplot as plt
+import numpy as np
+
+np.set_printoptions(linewidth=300,edgeitems=16)
 
 def main():
     """
@@ -32,7 +36,8 @@ def main():
             agent_valuation=config_dict['agent_valuation'][p],
             S=S,
             q_convergence_threshold=config_dict['q_convergence_threshold'],
-            print_directory=config_dict['output_folder']
+            print_directory=config_dict['output_folder'],
+            q_update_mode=config_dict['q_update_mode'][p]
         )
         new_player.set_r(S,config_dict['bid_periods'])
         new_player.set_q()
@@ -49,10 +54,11 @@ def main():
         for t in range(config_dict['bid_periods']):
             is_final_period = False if t < config_dict['bid_periods'] - 1 else True
             logging.info('Begin bidding period {0}, final period: {1}, state: {2}'.format(t, is_final_period, S[s]))
-            for p in player_list:
+            #player_list_reversed = player_list[::-1]
+            for p in player_list[::-1]:
                 a = p.select_action(t,s)
                 p.write_path_log_entry(log_args=(i, t, s, a))
-                p.update_q(t, s, a, is_final_period)
+                p.update_q_foe(t, s, a, is_final_period)
                 p.update_epsilon()
                 s = a
 
@@ -64,9 +70,12 @@ def main():
         path_dataframes.append(player.path_df)
         player.serialise_agent()
 
+        fig,axs = grap.plot_rewards_per_episode(player.path_df)
+        fig.savefig(player.get_serialised_file_name() + '_rewards_per_episode.png')
+
         fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
         fig.savefig(player.get_serialised_file_name()+'.png')
-        fig.show()
+        #fig.show()
 
         #print results per agent: temporary
         results_df = env.get_results_summary(path_dataframes, ceil(config_dict['episodes']/10))
@@ -82,6 +91,13 @@ def main():
         with open(pickle_path, 'wb') as fp:
             pickle.dump(config_dict, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
+    n_bids = config_dict['episodes']
+    final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
+    fig,axs = grap.plot_final_bids_heatmap(final_bids_df)
+    fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
+
+
+
     return
 
 if __name__ == '__main__':
@@ -93,14 +109,14 @@ if __name__ == '__main__':
     if len(config_dict) == 0:
         config_dict = {
             # Auction parameters
-            'episodes': 100000,
+            'episodes': 100,
             'initial_state_random': False,
 
             # Environment parameters
             'bid_periods': 2,
-            'price_levels': 10,
-            'num_players': 1,
-            'q_convergence_threshold':1000,
+            'price_levels': 5,
+            'num_players': 2,
+            'q_convergence_threshold':20000,
 
             # Script run parameters
             'output_folder':r'./results',
@@ -110,10 +126,11 @@ if __name__ == '__main__':
             'alpha': 0.8,
             'gamma': 0.5,
             'epsilon': 1,
-            'epsilon_decay_1': 0.9999,
+            'epsilon_decay_1': 0.95,
             'epsilon_decay_2': 0.99,
-            'epsilon_threshold': 0.4,
-            'agent_valuation': [7]
+            'epsilon_threshold': 0.3,
+            'agent_valuation': [4,4],
+            'q_update_mode':['foe','foe'],
         }
 
     main()
