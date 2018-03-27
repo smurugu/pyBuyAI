@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import environment as env
 import agent
+import os
+import itertools
+from numpy import nan
 
 def rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players):
     """
@@ -60,11 +63,19 @@ def plot_grid_search_heatmap(param1,param2,dependent_var,df):
     sns.heatmap(df2,ax=axs)
     return (fig,axs)
 
-def plot_final_bids_heatmap(bids_df):
+def plot_final_bids_heatmap(bids_df,price_levels,title=''):
     bids_df['freq'] = 1
+    prices = [-1] + list(range(price_levels))
+    values = [list(bids_df[col].drop_duplicates()) for col in bids_df.columns]
+    cartesian_values = list(itertools.product(prices, prices))
+    cartesian_values = [(x) + (0,) for x in cartesian_values]
+    df2 = pd.DataFrame(columns=bids_df.columns, data=cartesian_values)
+    bids_df = pd.concat([bids_df,df2],axis=0)
     piv = bids_df.fillna(-1).pivot_table(index=bids_df.columns[0], columns=bids_df.columns[1], values='freq', aggfunc='sum')
     fig, axs = plt.subplots(1)
-    sns.heatmap(piv, ax=axs)
+    axs.set_title(title)
+    axs.xaxis.tick_top()
+    sns.heatmap(piv, cmap="YlGnBu", ax=axs)
     return (fig,axs)
 
 def plot_rewards_per_episode(df):
@@ -77,8 +88,80 @@ def plot_rewards_per_episode(df):
     return (fig,axs)
 
 if __name__ == '__main__':
-    file_name = r'./parameter_grid_search/results/grid_search_results_4ae7ca5f-5f8f-4301-b871-7c438d881617.hdf'
-    df = pd.read_csv(file_name,sep='#')
+    game_id = '67835b1b-3e53-4263-b4c6-479d06894375'
+    folder = r"C:\GitRepo\pyBuyAI\parameter_grid_search\results"
+
+    player0_serialised = os.path.join(folder,'player_0_'+game_id+'.npy')
+    #player0_path = os.path.join(folder,'player_0_'+game_id+'.hdf')
+    player1_serialised = os.path.join(folder,'player_1_'+game_id+'.npy')
+    #player1_path = os.path.join(folder, 'player_1_' + game_id + '.hdf')
+
+    player0 = agent.Player()
+    player0.load_serialised_agent(player0_serialised)
+
+    player1 = agent.Player()
+    player1.load_serialised_agent(player1_serialised)
+    path_dataframes = [player0.path_df,player1.path_df]
+
+    max_bid=int(round(player0.path_df['bid'].max()))
+
+    update_mode = player0.q_update_mode
+    n_bids = int(100)
+    final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
+    title = '{}, last {} games'.format(update_mode, n_bids)
+    fig,axs = plot_final_bids_heatmap(final_bids_df,max_bid,title)
+    #fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
+    plt.show()
+
+    #debug path values
+    #look at final paths:
+    player0.path_df.tail(10)
+
+    #look at qmatrix and r matrix
+    State = env.define_state()
+    S = [State(current_winner=nan, current_bids=(nan, nan)),
+         State(current_winner=1, current_bids=(nan, 0)),
+         State(current_winner=1, current_bids=(nan, 1)),
+         State(current_winner=1, current_bids=(nan, 2)),
+         State(current_winner=1, current_bids=(nan, 3)),
+         State(current_winner=1, current_bids=(nan, 4)),
+         State(current_winner=0, current_bids=(0, nan)),
+         State(current_winner=nan, current_bids=(0, 0)),
+         State(current_winner=1, current_bids=(0, 1)),
+         State(current_winner=1, current_bids=(0, 2)),
+         State(current_winner=1, current_bids=(0, 3)),
+         State(current_winner=1, current_bids=(0, 4)),
+         State(current_winner=0, current_bids=(1, nan)),
+         State(current_winner=0, current_bids=(1, 0)),
+         State(current_winner=nan, current_bids=(1, 1)),
+         State(current_winner=1, current_bids=(1, 2)),
+         State(current_winner=1, current_bids=(1, 3)),
+         State(current_winner=1, current_bids=(1, 4)),
+         State(current_winner=0, current_bids=(2, nan)),
+         State(current_winner=0, current_bids=(2, 0)),
+         State(current_winner=0, current_bids=(2, 1)),
+         State(current_winner=nan, current_bids=(2, 2)),
+         State(current_winner=1, current_bids=(2, 3)),
+         State(current_winner=1, current_bids=(2, 4)),
+         State(current_winner=0, current_bids=(3, nan)),
+         State(current_winner=0, current_bids=(3, 0)),
+         State(current_winner=0, current_bids=(3, 1)),
+         State(current_winner=0, current_bids=(3, 2)),
+         State(current_winner=nan, current_bids=(3, 3)),
+         State(current_winner=1, current_bids=(3, 4)),
+         State(current_winner=0, current_bids=(4, nan)),
+         State(current_winner=0, current_bids=(4, 0)),
+         State(current_winner=0, current_bids=(4, 1)),
+         State(current_winner=0, current_bids=(4, 2)),
+         State(current_winner=0, current_bids=(4, 3)),
+         State(current_winner=nan, current_bids=(4, 4))]
+    cb = [s.current_bids for s in S]
+    pd.options.display.max_columns = 40
+    thing = pd.DataFrame(data=player1.Q[0], columns=cb, index=cb)
+    thing
+
+    print('done')
+    """
     ept = 0.6
     df2 = df[(df['bid_periods'] == 5) & (df['epsilon_threshold'] == ept)]
 
@@ -104,5 +187,8 @@ if __name__ == '__main__':
     fig = plt.figure()
     plt.plot(df2['episode'], df2['reward'])
     plt.show()
+    """
+
+
 
     print('lala, end')

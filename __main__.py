@@ -9,8 +9,9 @@ from math import ceil
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
-np.set_printoptions(linewidth=300,edgeitems=16)
+#np.set_printoptions(linewidth=300,edgeitems=16)
 
 def main():
     """
@@ -21,6 +22,7 @@ def main():
     """
 
     S = env.get_possible_states(config_dict['price_levels'],config_dict['num_players'])
+    game_id = env.get_game_id()
 
     # Initialise the players
     player_list = []
@@ -33,11 +35,12 @@ def main():
             epsilon_decay_1=config_dict['epsilon_decay_1'],
             epsilon_decay_2=config_dict['epsilon_decay_2'],
             epsilon_threshold=config_dict['epsilon_threshold'],
-            agent_valuation=config_dict['agent_valuation'][p],
+            agent_valuation=config_dict['agent_valuation'],
             S=S,
             q_convergence_threshold=config_dict['q_convergence_threshold'],
             print_directory=config_dict['output_folder'],
-            q_update_mode=config_dict['q_update_mode'][p]
+            q_update_mode=config_dict['q_update_mode'],
+            file_name_base=str(game_id)
         )
         new_player.set_r(S,config_dict['bid_periods'])
         new_player.set_q()
@@ -58,29 +61,43 @@ def main():
             for p in player_list[::-1]:
                 a = p.select_action(t,s)
                 p.write_path_log_entry(log_args=(i, t, s, a))
-                p.update_q_foe(t, s, a, is_final_period)
+                p.update_q(t, s, a, is_final_period)
                 p.update_epsilon()
+                #print(p.Q)
+                #print('player:{}, time: {}, s:{}'.format(p.player_id,t,s))
+                #print(p.get_current_qmatrix(1, s))
+                #if np.max(p.get_current_qmatrix(1, s)) > 0 and p.player_id ==0:
+                #    print('look!')
+                if is_final_period:
+                    #print(t)
+                    logging.debug('Player {} penultimate Q pane: \n {}'.format(p.player_id, p.Q[t-1]))
+                    logging.debug('Player {} final Q pane: \n {}'.format(p.player_id, p.Q[t]))
+                    #logging.debug('Player {} payoff matrix for final period: \n {}'.format(p.player_id,p.get_payoff_matrix(t)))
+                    logging.debug(
+                        'Player {} payoff matrix for state {}: {}: \n {}'.format(p.player_id, s, p.S[s], p.get_current_qmatrix(t-1,s)))
                 s = a
 
     logging.info('All episodes complete, printing path history and auction results for all agents...')
 
     path_dataframes = []
-    for i,player in enumerate(player_list):
+    results_dataframes = []
+    for i,player in enumerate(player_list[::-1]):
         player.path_df = player.get_path_log_from_hdf(player.get_serialised_file_name()+'.hdf')
         path_dataframes.append(player.path_df)
         player.serialise_agent()
 
-        fig,axs = grap.plot_rewards_per_episode(player.path_df)
-        fig.savefig(player.get_serialised_file_name() + '_rewards_per_episode.png')
+        #fig,axs = grap.plot_rewards_per_episode(player.path_df)
+        #fig.savefig(player.get_serialised_file_name() + '_rewards_per_episode.png')
 
-        fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
-        fig.savefig(player.get_serialised_file_name()+'.png')
+        #fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
+        #fig.savefig(player.get_serialised_file_name()+'.png')
         #fig.show()
 
         #print results per agent: temporary
         results_df = env.get_results_summary(path_dataframes, ceil(config_dict['episodes']/10))
-        results_path = player.get_serialised_file_name()+'.csv'
+        results_path = player.get_serialised_file_name()+'_results.csv'
         results_df.to_csv(results_path,index=False)
+        results_dataframes.append(results_df)
 
         config_dict['path_df'] = player.path_df.to_dict()
         config_dict['results_df'] = results_df.to_dict()
@@ -91,32 +108,37 @@ def main():
         with open(pickle_path, 'wb') as fp:
             pickle.dump(config_dict, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-    n_bids = config_dict['episodes']
+    final_result_df = pd.DataFrame()
+    for result in results_dataframes:
+        final_result_df = pd.concat([final_result_df,result],axis=1)
+    final_result_path = os.path.join(config_dict['output_folder'],str(game_id)+'_results.csv')
+    final_result_df.to_csv(final_result_path)
+
+    n_bids = int(100)
     final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
-    fig,axs = grap.plot_final_bids_heatmap(final_bids_df)
+    title = '{}, last {} games'.format(config_dict['q_update_mode'],n_bids)
+    fig,axs = grap.plot_final_bids_heatmap(final_bids_df,config_dict['price_levels'],title)
     fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
-
-
 
     return
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),
-                        format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+                        format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     logging.info('Process start')
 
     config_dict = env.interpret_args(sys.argv)
     if len(config_dict) == 0:
         config_dict = {
             # Auction parameters
-            'episodes': 100,
+            'episodes': 10000,
             'initial_state_random': False,
 
             # Environment parameters
             'bid_periods': 2,
             'price_levels': 5,
             'num_players': 2,
-            'q_convergence_threshold':20000,
+            'q_convergence_threshold':10000,
 
             # Script run parameters
             'output_folder':r'./results',
@@ -126,11 +148,11 @@ if __name__ == '__main__':
             'alpha': 0.8,
             'gamma': 0.5,
             'epsilon': 1,
-            'epsilon_decay_1': 0.95,
-            'epsilon_decay_2': 0.99,
+            'epsilon_decay_1': 0.999,
+            'epsilon_decay_2': 0.9,
             'epsilon_threshold': 0.3,
-            'agent_valuation': [4,4],
-            'q_update_mode':['foe','foe'],
+            'agent_valuation': 4.1,
+            'q_update_mode':'foe'
         }
 
     main()

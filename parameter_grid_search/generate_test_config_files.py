@@ -18,6 +18,7 @@ epsilon:XXX,^
 epsilon_decay_1:XXX,^
 epsilon_decay_2:XXX,^
 epsilon_threshold:XXX,^
+q_update_mode:XXX,^
 agent_valuation:XXX,^
 q_convergence_threshold:XXX,^
 output_folder:r'./results',^
@@ -26,19 +27,20 @@ output_file:%~n0
 python.exe ..\__main__.py %ARG_STRING%"""
 
 replace_dict = {
-    'episodes':[10000],
+    'episodes':[30000],
     'initial_state_random':[False],
-    'bid_periods':[4],
-    'price_levels':[10],
-    'num_players':[1],
-    'alpha':[0.8],
-    'gamma':[1],
+    'bid_periods':[2],
+    'price_levels':[5],
+    'num_players':[2],
+    'alpha':[0.6],
+    'gamma':[0.8],
     'epsilon':[1],
-    'epsilon_decay_1':[0.9999,0.999,0.99,0.9],
-    'epsilon_decay_2':[0.999,0.99,0.9],
-    'epsilon_threshold':[0.4],
-    'agent_valuation':[[7]],
-    'q_convergence_threshold':[100]
+    'epsilon_decay_1':[0.99993],
+    'epsilon_decay_2':[0.99],
+    'epsilon_threshold':[0.3],
+    'agent_valuation':[5],
+    'q_update_mode':['foe','friend','nash'],
+    'q_convergence_threshold':[10000]
 }
 # format strings for replacement
 replace_tuple = ()

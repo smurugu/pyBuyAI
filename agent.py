@@ -17,10 +17,10 @@ class Player(object):
     This is an agent
     Default values 0, 0, 0, 0, 0, 0, 0, 0, []
     """
-    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, q_convergence_threshold=100, print_directory=r'.',q_update_mode='foe'):
+    def __init__(self, player_id=0, alpha=0, gamma=0, epsilon=0, epsilon_decay_1=0, epsilon_decay_2=0, epsilon_threshold=0, agent_valuation=0, S=0, q_convergence_threshold=100, print_directory=r'.',q_update_mode='foe',file_name_base='game'):
         self.player_id = player_id
         self.print_directory = print_directory
-        self.file_name = self.set_serialised_file_name()
+        self.file_name = self.set_serialised_file_name(file_name_base)
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -65,10 +65,13 @@ class Player(object):
         R3D[:, filt4] = np.nan
 
         # agent payoff set for final period is (valuation - price) if winner, 0 if not winner
+        R3D[bid_periods - 1] = np.zeros(np.shape(R3D[bid_periods - 1]))
         filt5 = np.triu(np.array([[True for y in S] for x in S]), 1)
+        filt6 = np.tril(np.array([[True for y in S] for x in S]), -1)
         R3D[bid_periods - 1, filt5] = np.nan
+        R3D[bid_periods - 1, filt6] = np.nan
         values = np.array(
-            [[(agent_valuation - max(y.current_bids) + 1 if y.current_winner == self.player_id else 0) for y in S] for x in S])
+            [[(agent_valuation - np.nanmax(y.current_bids) + 1 if y.current_winner == self.player_id else 0) for y in S] for x in S])
         R3D[bid_periods - 1, :, :] = np.multiply(R3D[bid_periods - 1, :, :] + 1, values)
 
         return R3D
@@ -135,12 +138,36 @@ class Player(object):
         :return:
         """
         action_tuples = [s.current_bids for s in self.S]
+        #reorder action_tuples to be from players perspective
+        action_tuples = [(x[self.player_id],)+tuple(y for i,y in enumerate(x) if i !=self.player_id) for x in action_tuples]
         action_qvalues = dict(zip(action_tuples,self.Q[t, s]))
         players = len(action_tuples[0])
         actions_p0 = list(set([cb[0] for cb in action_tuples]))
 
         qvalue_array = np.zeros((len(actions_p0),)*players)
         for bid_combo in action_qvalues:
+            bid_combo_ind = tuple(actions_p0.index(b) for b in bid_combo)
+            qvalue_array[bid_combo_ind] = action_qvalues[bid_combo]
+
+        return qvalue_array
+
+    def get_payoff_matrix(self,t):
+        """
+        Function returns an action*action grid of q values for the given player
+        :param t:
+        :param s:
+        :return:
+        """
+        action_tuples = [s.current_bids for s in self.S]
+        #reorder action_tuples to be from players perspective
+        action_tuples = [(x[self.player_id],)+tuple(y for i,y in enumerate(x) if i !=self.player_id) for x in action_tuples]
+        payoff_qvalues = list(np.diag(self.Q[t]))
+        action_qvalues = dict(zip(action_tuples,payoff_qvalues))
+        players = len(action_tuples[0])
+        actions_p0 = list(set([cb[0] for cb in action_tuples]))
+
+        qvalue_array = np.zeros((len(actions_p0),)*players)
+        for bid_combo in action_tuples:
             bid_combo_ind = tuple(actions_p0.index(b) for b in bid_combo)
             qvalue_array[bid_combo_ind] = action_qvalues[bid_combo]
 
@@ -192,7 +219,7 @@ class Player(object):
         Q = self.Q
         Q[t,s,a] = Qnew
         self.Q = Q
-        logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
+        #logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
         return self.Q
 
     def update_q_friends(self,t,s,a,is_final_period:bool):
@@ -233,7 +260,7 @@ class Player(object):
         Q = self.Q
         Q[t,s,a] = Qnew
         self.Q = Q
-        logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
+        #logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
         return self.Q
 
     def update_q_foe(self,t,s,a,is_final_period:bool):
@@ -278,7 +305,7 @@ class Player(object):
         Q = self.Q
         Q[t,s,a] = Qnew
         self.Q = Q
-        logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
+        #logging.debug('Updated Q matrix: \n {0}'.format(self.Q))
         return self.Q
 
     def add_to_stationaryQ_episodes(self):
@@ -363,8 +390,14 @@ class Player(object):
         file_name = os.path.join(self.print_directory,file_name)
         return file_name
 
-    def set_serialised_file_name(self):
+    def set_serialised_file_name_old(self):
         file_name = str(uuid.uuid4())
+        env.check_and_create_directory(self.print_directory)
+        self.file_name = os.path.join(self.print_directory, file_name)
+        return self.file_name
+
+    def set_serialised_file_name(self,file_name_base):
+        file_name = 'player_'+str(self.player_id)+'_'+str(file_name_base)
         env.check_and_create_directory(self.print_directory)
         self.file_name = os.path.join(self.print_directory, file_name)
         return self.file_name

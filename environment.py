@@ -7,6 +7,7 @@ import itertools
 import logging
 import numpy as np
 from math import ceil
+import uuid
 
 def get_possible_states(num_price_levels, num_players):
     """
@@ -106,8 +107,9 @@ def get_last_x_bids_array(path_dataframes:list,n_games:int):
             (path_df['episode'] >= first_episode_to_include) & (path_df['bidding_round'] == max_bid_rounds)
         ].sort_values(['episode'],ascending=True).reset_index()
 
-        bids_df = pd.DataFrame(columns=[player_id],data=rounds_df['bid'],index=rounds_df.index)
-
+        #bids_df = pd.DataFrame(columns=[player_id],data=rounds_df['bid'],index=rounds_df.index)
+        bids_df = pd.DataFrame(rounds_df['bid'])
+        bids_df = bids_df.rename(columns={'bid':player_id})
         all_bids_df = pd.concat([all_bids_df,bids_df],axis=1)
 
     return all_bids_df
@@ -158,7 +160,7 @@ def interpret_args(sys_args):
 
     arg_list = sys.argv[1].split(',')
     arg_dict = {x.split(':')[0]: x.split(':')[1] for x in arg_list}
-
+    print('Arg dict: {}'.format(arg_dict))
     for k in arg_dict:
         try:
             arg_dict[k] = ast.literal_eval(arg_dict[k])
@@ -166,3 +168,7 @@ def interpret_args(sys_args):
             logging.error('interpret_args: unable to do literal eval for argument: {0} \n Error: {1}'.format(arg_dict[k], ex))
 
     return arg_dict
+
+def get_game_id():
+    file_name = str(uuid.uuid4())
+    return file_name
