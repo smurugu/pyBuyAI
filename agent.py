@@ -31,7 +31,7 @@ class Player(object):
         self.S = S
         self.Q = None
         self.R = None
-        self.path_df = pd.DataFrame(columns=['player_id','episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','reward','periods_since_q_change','q_converged'])
+        self.path_df = pd.DataFrame(columns=['player_id','episode','bidding_round','bid','prev_state_index','prev_state_label','action_index','alpha','gamma','epsilon','epsilon_decay_1','epsilon_decay_2','epsilon_threshold','reward','periods_since_q_change','q_converged'])
         if type(S) == list:
             self.state_dict = dict(zip(list(range(len(S))), S))
         self.stationaryQ_episodes = 0
@@ -48,7 +48,7 @@ class Player(object):
         R3D = np.zeros(np.shape(R3D))
 
         # can only bid a price higher than previously bid
-        filt2 = np.array([[y.current_bids[self.player_id] < max(x.current_bids) for y in S] for x in S])
+        filt2 = np.array([[y.current_bids[self.player_id] < x.current_bids[self.player_id] for y in S] for x in S])
         R3D[:, filt2] = np.nan
 
         # once player has bid nan, cannot re-enter auction (after initial period)
@@ -334,7 +334,7 @@ class Player(object):
         for col in ['episode','bidding_round','prev_state_index','action_index']:
             row_df[col] = locals()[col]
 
-        for col in ['alpha','gamma','epsilon']:
+        for col in ['alpha','gamma','epsilon','epsilon_decay_1','epsilon_decay_2','epsilon_threshold','agent_valuation']:
             row_df[col] = self.__getattribute__(col)
 
         row_df['prev_state_label'] = str(self.S[prev_state_index])
@@ -344,7 +344,7 @@ class Player(object):
         row_df['q_converged'] = self.Q_converged
         row_df['player_id'] = self.player_id
 
-        return row_df
+        return row_df[self.path_df.columns]
 
     def write_path_log_entry(self, csv_path=None, log_args=()):
 

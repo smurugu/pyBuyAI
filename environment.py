@@ -121,7 +121,10 @@ def get_results_summary(path_dataframes:list,reward_vector_interval=1000):
     :param path_dataframes: path dataframes of players
     :return: results dataframe
     """
-    results_df = pd.DataFrame(columns=['Player ID', 'Total Episodes', 'Player Converged', 'Period Converged','Avg Reward','Avg Reward Vector'])
+    results_df = pd.DataFrame(columns=
+                              ['Player ID', 'Total Episodes', 'Player Converged', 'Period Converged','Avg Reward','Avg Reward Vector',
+                               'alpha','gamma','epsilon_decay_1','epsilon_decay_2','epsilon_threshold','final_epsilon']
+                              )
 
     for path_df in path_dataframes:
 
@@ -149,6 +152,11 @@ def get_results_summary(path_dataframes:list,reward_vector_interval=1000):
         row_df['Period Converged'] = period_converged
         row_df['Avg Reward'] = avg_reward
         row_df['Avg Reward Vector'] = '_'.join([str(round(x,4)) for x in reward_vector])
+
+        for col in ['alpha','gamma','epsilon_decay_1','epsilon_decay_2','epsilon_threshold']:
+            row_df[col] = path_df.tail(1)[col].values
+
+        row_df['final_epsilon'] = path_df.tail(1)['epsilon'].values
 
         results_df = results_df.append(row_df)
 

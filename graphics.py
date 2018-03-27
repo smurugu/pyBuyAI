@@ -8,6 +8,7 @@ import agent
 import os
 import itertools
 from numpy import nan
+import glob
 
 def rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players):
     """
@@ -82,12 +83,38 @@ def plot_rewards_per_episode(df):
     df2 = df[df['bidding_round'] == max(df['bidding_round'])]
 
     fig, axs = plt.subplots(1)
-    plt.plot(df2['episode'], df2['reward'])
+    plt.plot(df2['episode'], df2['reward'],alpha=0.7)
     #plt.show()
 
     return (fig,axs)
 
 if __name__ == '__main__':
+    results_template = r"C:\GitRepo\pyBuyAI\parameter_grid_search\results\*results*csv"
+    results_files = glob.glob(results_template)
+
+    df = pd.read_csv(results_files[0])
+    for file in results_files[1:]:
+        df = pd.concat([df,pd.read_csv(file)],axis=0)
+
+    value_col = 'avg_rwd_100g'
+    df[value_col] = df['Avg Reward Vector'].apply(lambda x: x.split('_')[len(x.split('_'))-1])
+
+    grid_params = ['alpha','gamma']
+    df = df[grid_params+[value_col]].astype(float)
+    piv = df.fillna(-1).pivot_table(
+        index=grid_params[0],
+        columns=grid_params[1],
+        values=value_col,
+        aggfunc='sum',
+        fill_value=0
+    )
+    fig, axs = plt.subplots(1)
+    axs.set_title('Grid search on: {}'.format(', '.join(grid_params)))
+    axs.xaxis.tick_top()
+    sns.heatmap(piv, cmap="Blues", ax=axs, linewidths=1)
+
+
+    #get multiagent final bid heatmaps
     game_id = '67835b1b-3e53-4263-b4c6-479d06894375'
     folder = r"C:\GitRepo\pyBuyAI\parameter_grid_search\results"
 

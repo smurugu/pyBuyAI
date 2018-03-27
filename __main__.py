@@ -86,15 +86,17 @@ def main():
         path_dataframes.append(player.path_df)
         player.serialise_agent()
 
-        #fig,axs = grap.plot_rewards_per_episode(player.path_df)
-        #fig.savefig(player.get_serialised_file_name() + '_rewards_per_episode.png')
+        fig,axs = grap.plot_rewards_per_episode(player.path_df)
+        fig.suptitle('Rewards per Episode')
+        fig.savefig(player.get_serialised_file_name() + '_rewards_per_episode.png')
 
-        #fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
-        #fig.savefig(player.get_serialised_file_name()+'.png')
+        fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
+        fig.suptitle('Bids placed')
+        fig.savefig(player.get_serialised_file_name()+'.png')
         #fig.show()
 
         #print results per agent: temporary
-        results_df = env.get_results_summary(path_dataframes, ceil(config_dict['episodes']/10))
+        results_df = env.get_results_summary(path_dataframes, 100)
         results_path = player.get_serialised_file_name()+'_results.csv'
         results_df.to_csv(results_path,index=False)
         results_dataframes.append(results_df)
@@ -114,11 +116,11 @@ def main():
     final_result_path = os.path.join(config_dict['output_folder'],str(game_id)+'_results.csv')
     final_result_df.to_csv(final_result_path)
 
-    n_bids = int(100)
-    final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
-    title = '{}, last {} games'.format(config_dict['q_update_mode'],n_bids)
-    fig,axs = grap.plot_final_bids_heatmap(final_bids_df,config_dict['price_levels'],title)
-    fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
+    #n_bids = int(100)
+    #final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
+    #title = '{}, last {} games'.format(config_dict['q_update_mode'],n_bids)
+    #fig,axs = grap.plot_final_bids_heatmap(final_bids_df,config_dict['price_levels'],title)
+    #fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
 
     return
 
@@ -131,13 +133,13 @@ if __name__ == '__main__':
     if len(config_dict) == 0:
         config_dict = {
             # Auction parameters
-            'episodes': 10000,
+            'episodes': 1000,
             'initial_state_random': False,
 
             # Environment parameters
             'bid_periods': 2,
             'price_levels': 5,
-            'num_players': 2,
+            'num_players': 1,
             'q_convergence_threshold':10000,
 
             # Script run parameters
@@ -148,11 +150,11 @@ if __name__ == '__main__':
             'alpha': 0.8,
             'gamma': 0.5,
             'epsilon': 1,
-            'epsilon_decay_1': 0.999,
-            'epsilon_decay_2': 0.9,
+            'epsilon_decay_1': 0.9999,
+            'epsilon_decay_2': 0.99,
             'epsilon_threshold': 0.3,
             'agent_valuation': 4.1,
-            'q_update_mode':'foe'
+            'q_update_mode':'nash'
         }
 
     main()
