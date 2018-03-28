@@ -48,7 +48,7 @@ def main():
 
     all_players_converged = False
     i = 0
-    while i<config_dict['episodes']+1 and not(all_players_converged):
+    while i<config_dict['episodes']+1:
         i = i + 1
         all_players_converged = all([x.Q_converged for x in player_list])
 
@@ -139,8 +139,8 @@ if __name__ == '__main__':
             # Environment parameters
             'bid_periods': 2,
             'price_levels': 5,
-            'num_players': 1,
-            'q_convergence_threshold':10000,
+            'num_players': 2,
+            'q_convergence_threshold':100,
 
             # Script run parameters
             'output_folder':r'./results',

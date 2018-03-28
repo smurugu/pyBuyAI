@@ -27,20 +27,20 @@ output_file:%~n0
 python.exe ..\__main__.py %ARG_STRING%"""
 
 replace_dict = {
-    'episodes':[30000],
+    'episodes':[10000],
     'initial_state_random':[False],
     'bid_periods':[2],
     'price_levels':[5],
-    'num_players':[2],
-    'alpha':[0.6],
-    'gamma':[0.8],
+    'num_players':[1],
+    'alpha':[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+    'gamma':[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
     'epsilon':[1],
-    'epsilon_decay_1':[0.99993],
-    'epsilon_decay_2':[0.99],
+    'epsilon_decay_1':[0.99],
+    'epsilon_decay_2':[0.9],
     'epsilon_threshold':[0.3],
-    'agent_valuation':[5],
-    'q_update_mode':['foe','friend','nash'],
-    'q_convergence_threshold':[10000]
+    'agent_valuation':[4.1],
+    'q_update_mode':['nash'],
+    'q_convergence_threshold':[100]
 }
 # format strings for replacement
 replace_tuple = ()

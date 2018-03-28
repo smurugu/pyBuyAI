@@ -79,17 +79,34 @@ def plot_final_bids_heatmap(bids_df,price_levels,title=''):
     sns.heatmap(piv, cmap="YlGnBu", ax=axs)
     return (fig,axs)
 
-def plot_rewards_per_episode(df):
+def plot_rewards_per_episode(df,alpha=(0.7,1),colours=('tab:blue','tab:purple'),rolling_mean_window=10):
     df2 = df[df['bidding_round'] == max(df['bidding_round'])]
+    df2['reward_ma'] = df2['reward'].rolling(rolling_mean_window,1).mean()
 
     fig, axs = plt.subplots(1)
-    plt.plot(df2['episode'], df2['reward'],alpha=0.7)
-    #plt.show()
-
+    plt.plot(df2['episode'], df2['reward'], alpha=alpha[0], color='tab:blue', label='Reward')
+    plt.plot(df2['episode'], df2['reward_ma'], alpha=alpha[1], color='tab:purple', label='{} game moving avg'.format(rolling_mean_window))
+    plt.legend(loc='lower right')
     return (fig,axs)
 
 if __name__ == '__main__':
-    results_template = r"C:\GitRepo\pyBuyAI\parameter_grid_search\results\*results*csv"
+
+    #get results paths graphics for a good agent
+    results_folder = r'C:\GitRepo\pyBuyAI\parameter_grid_search2\results\epsilon_decay_gridsearch_10kg_4bp'
+    game_id = '533e37b7-983c-4e45-93c7-7cb02d67048d'
+    path_hdf = os.path.join(results_folder,'player_0_'+game_id+'.hdf')
+    path_df = pd.read_csv(path_hdf,sep='#')
+    path_df = path_df[path_df['episode']<3500]
+
+    fig, axs = plot_rewards_per_episode(path_df, alpha=(0.5, 1), colours=('tab:blue', 'tab:purple'),
+                                        rolling_mean_window=10)
+    axs.set_title('Rewards per Episode')
+    axs.set_xlabel('Episodes')
+    axs.set_ylabel('Final Reward')
+
+
+    # get grid search heatmaps
+    results_template = r"C:\GitRepo\pyBuyAI\parameter_grid_search2\results\*results*csv"
     results_files = glob.glob(results_template)
 
     df = pd.read_csv(results_files[0])
@@ -97,22 +114,91 @@ if __name__ == '__main__':
         df = pd.concat([df,pd.read_csv(file)],axis=0)
 
     value_col = 'avg_rwd_100g'
-    df[value_col] = df['Avg Reward Vector'].apply(lambda x: x.split('_')[len(x.split('_'))-1])
+    df['avg_rwd_100g'] = df['Avg Reward Vector'].apply(lambda x: x.split('_')[len(x.split('_'))-1])
+
+    # now for epsilon decay
+    grid_params = ['epsilon_decay_1','epsilon_decay_2']
+    metric_cols = ['avg_rwd_100g','Period Converged','final_epsilon']
+    metric_titles = ['Average Reward for Final 100 Games','Periods Until Q-convergence','Final Epsilon Value']
+    cmap_list = ['Blues','Greens','Reds']
+
+    #fig, axs = plt.subplots(1, 2, sharex=True, sharey=True, tight_layout=True)
+    fig, axs = plt.subplots(1, 3, figsize=(10, 10), tight_layout=True)
+    for i,metric in enumerate(metric_cols):
+        df2 = df[grid_params+[metric]].astype(float)
+        piv = df2.fillna(-1).pivot_table(
+            index=grid_params[0],
+            columns=grid_params[1],
+            values=metric,
+            aggfunc='mean',
+            fill_value=0
+        )
+        #fig, axs = plt.subplots(1)
+        #fig.suptitle('Grid search on: {}'.format(', '.join(grid_params)))
+        axs[i].xaxis.tick_top()
+        axs[i].set_title(metric_titles[i])
+        sns.heatmap(piv, cmap=cmap_list[i], ax=axs[i], linewidths=1)
+
+    #plt.show()
+
+    # for alpha and gamma
+    results_template = r"C:\GitRepo\pyBuyAI\parameter_grid_search\results\*results*csv"
+    results_files = glob.glob(results_template)
+
+    df = pd.read_csv(results_files[0])
+    for file in results_files[1:]:
+        df = pd.concat([df,pd.read_csv(file)],axis=0)
+
+    df['avg_rwd_100g'] = df['Avg Reward Vector'].apply(lambda x: x.split('_')[len(x.split('_')) - 1])
 
     grid_params = ['alpha','gamma']
-    df = df[grid_params+[value_col]].astype(float)
-    piv = df.fillna(-1).pivot_table(
-        index=grid_params[0],
-        columns=grid_params[1],
-        values=value_col,
-        aggfunc='sum',
-        fill_value=0
-    )
-    fig, axs = plt.subplots(1)
-    axs.set_title('Grid search on: {}'.format(', '.join(grid_params)))
-    axs.xaxis.tick_top()
-    sns.heatmap(piv, cmap="Blues", ax=axs, linewidths=1)
+    metric_cols = ['avg_rwd_100g','Period Converged']
+    metric_titles = ['Average Reward for Final 100 Games','Periods Until Q-convergence','Final Epsilon Value']
+    cmap_list = ['Blues','Greens','Reds']
 
+    #fig, axs = plt.subplots(1, 2, sharex=True, sharey=True, tight_layout=True)
+    fig, axs = plt.subplots(1, 2, figsize=(10, 10), tight_layout=True)
+    for i,metric in enumerate(metric_cols):
+        df2 = df[grid_params+[metric]].astype(float)
+        piv = df2.fillna(-1).pivot_table(
+            index=grid_params[0],
+            columns=grid_params[1],
+            values=metric,
+            aggfunc='mean',
+            fill_value=0
+        )
+        #fig, axs = plt.subplots(1)
+        #fig.suptitle('Grid search on: {}'.format(', '.join(grid_params)))
+        axs[i].xaxis.tick_top()
+        axs[i].set_title(metric_titles[i])
+        sns.heatmap(piv, cmap=cmap_list[i], ax=axs[i], linewidths=1)
+
+        #plt.show()
+
+    # now for epsilon decay
+    grid_params = ['epsilon_decay_1','epsilon_decay_2']
+    metric_cols = ['avg_rwd_100g','Period Converged','final_epsilon']
+    metric_titles = ['Average Reward for Final 100 Games','Periods Until Q-convergence','Final Epsilon Value']
+    cmap_list = ['Blues','Greens','Reds']
+
+    #fig, axs = plt.subplots(1, 2, sharex=True, sharey=True, tight_layout=True)
+    fig, axs = plt.subplots(1, 3, figsize=(10, 10), tight_layout=True)
+    for i,metric in enumerate(metric_cols):
+        df2 = df[grid_params+[metric]].astype(float)
+        piv = df2.fillna(-1).pivot_table(
+            index=grid_params[0],
+            columns=grid_params[1],
+            values=metric,
+            aggfunc='mean',
+            fill_value=0
+        )
+        #fig, axs = plt.subplots(1)
+        #fig.suptitle('Grid search on: {}'.format(', '.join(grid_params)))
+        axs[i].xaxis.tick_top()
+        axs[i].set_title(metric_titles[i])
+        sns.heatmap(piv, cmap=cmap_list[i], ax=axs[i], linewidths=1)
+
+        #plt.show()
 
     #get multiagent final bid heatmaps
     game_id = '67835b1b-3e53-4263-b4c6-479d06894375'
@@ -138,7 +224,7 @@ if __name__ == '__main__':
     title = '{}, last {} games'.format(update_mode, n_bids)
     fig,axs = plot_final_bids_heatmap(final_bids_df,max_bid,title)
     #fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
-    plt.show()
+    #plt.show()
 
     #debug path values
     #look at final paths:

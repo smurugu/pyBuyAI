@@ -48,8 +48,12 @@ class Player(object):
         R3D = np.zeros(np.shape(R3D))
 
         # can only bid a price higher than previously bid
-        filt2 = np.array([[y.current_bids[self.player_id] < x.current_bids[self.player_id] for y in S] for x in S])
+        filt2 = np.array([[y.current_bids[self.player_id] < max(x.current_bids) for y in S] for x in S])
         R3D[:, filt2] = np.nan
+
+        # NEW: cannot bid the same as another player
+        #filt2 = np.array([[y.current_bids[self.player_id] in x.current_bids for y in S] for x in S])
+        #R3D[:, filt2] = np.nan
 
         # once player has bid nan, cannot re-enter auction (after initial period)
         filt3 = np.array(

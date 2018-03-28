@@ -136,7 +136,7 @@ def get_results_summary(path_dataframes:list,reward_vector_interval=1000):
         total_episodes = path_df['episode'].max()
         convergence_status = path_df['q_converged'].tail(1).values[0]
         if convergence_status:
-            period_converged = path_df[path_df['q_converged']]['episode'].max()
+            period_converged = path_df[path_df['q_converged']]['episode'].min()
         else:
             period_converged = np.nan
 
