@@ -9,6 +9,8 @@ config_template = """Echo Running Config: %0
 SET ARG_STRING=^
 episodes:XXX,^
 initial_state_random:XXX,^
+randomise_turn_order:XXX,^
+share_rewards_on_tie:XXX,^
 bid_periods:XXX,^
 price_levels:XXX,^
 num_players:XXX,^
@@ -27,19 +29,21 @@ output_file:%~n0
 python.exe ..\__main__.py %ARG_STRING%"""
 
 replace_dict = {
-    'episodes':[10000],
+    'episodes':[40000],
     'initial_state_random':[False],
-    'bid_periods':[2],
+    'randomise_turn_order':[True,False],
+    'share_rewards_on_tie':[True,False],
+    'bid_periods':[3],
     'price_levels':[5],
-    'num_players':[1],
-    'alpha':[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-    'gamma':[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+    'num_players':[2],
+    'alpha':[0.8],
+    'gamma':[0.5],
     'epsilon':[1],
-    'epsilon_decay_1':[0.99],
+    'epsilon_decay_1':[0.99999],
     'epsilon_decay_2':[0.9],
-    'epsilon_threshold':[0.3],
-    'agent_valuation':[4.1],
-    'q_update_mode':['nash'],
+    'epsilon_threshold':[0.4],
+    'agent_valuation':[3.3],
+    'q_update_mode':['foe','friend','qlearn'],
     'q_convergence_threshold':[100]
 }
 # format strings for replacement

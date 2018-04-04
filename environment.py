@@ -44,25 +44,28 @@ def set_winner(state):
     :return:
     """
     state_values = state._asdict()
-    state_values['current_winner'] = get_winner(state)
+    state_values['current_winner'] = get_winner_for_state(state)
     State = define_state()
     return State(**state_values)
 
-def get_winner(state):
+def get_winner_for_state(state):
     """
     Function returns a value for the current winner, given the current_bids in the input state
     :param state: input State
     :return: output State with current_winner attribute overwritten
     """
-    if all([np.isnan(bid) for bid in state.current_bids]):
+    return get_winner(state.current_bids)
+
+def get_winner(bids_tuple):
+    if all([np.isnan(bid) for bid in bids_tuple]):
         return np.nan
-    elif len(state.current_bids) == 1:
+    elif len(bids_tuple) == 1:
         return 0
-    elif len(set(state.current_bids)) == 1:
+    elif len(set(bids_tuple)) == 1:
         return np.nan
     else:
-        for i, b in enumerate(state.current_bids):
-            if b == np.nanmax(state.current_bids):
+        for i, b in enumerate(bids_tuple):
+            if b == np.nanmax(bids_tuple):
                 return i
 
 def define_state():

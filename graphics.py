@@ -73,10 +73,11 @@ def plot_final_bids_heatmap(bids_df,price_levels,title=''):
     df2 = pd.DataFrame(columns=bids_df.columns, data=cartesian_values)
     bids_df = pd.concat([bids_df,df2],axis=0)
     piv = bids_df.fillna(-1).pivot_table(index=bids_df.columns[0], columns=bids_df.columns[1], values='freq', aggfunc='sum')
-    fig, axs = plt.subplots(1)
+    fig, axs = plt.subplots(1,figsize=(5,5))
     axs.set_title(title)
-    axs.xaxis.tick_top()
     sns.heatmap(piv, cmap="YlGnBu", ax=axs)
+    axs.invert_yaxis()
+    #axs.xaxis.tick_top()
     return (fig,axs)
 
 def plot_rewards_per_episode(df,alpha=(0.7,1),colours=('tab:blue','tab:purple'),rolling_mean_window=10):
@@ -90,6 +91,23 @@ def plot_rewards_per_episode(df,alpha=(0.7,1),colours=('tab:blue','tab:purple'),
     return (fig,axs)
 
 if __name__ == '__main__':
+
+
+    #get multiagent final bid heatmaps
+    player0 = 'dd6daa2f-cc2c-40db-a42f-6e4ab6710f81'
+    player1 = '8b68992c-c44b-475d-b3ee-c67a9b3b8ab6'
+    folder = r"C:\GitRepo\pyBuyAI\parameter_grid_search\results\alpha_gamma_gridsearch_10k_2bp"
+
+    player0_serialised = os.path.join(folder,'player_0_'+player0+'.npy')
+    #player0_path = os.path.join(folder,'player_0_'+game_id+'.hdf')
+    player1_serialised = os.path.join(folder,'player_0_'+player1+'.npy')
+    #player1_path = os.path.join(folder, 'player_1_' + game_id + '.hdf')
+
+    player0 = agent.Player()
+    player0.load_serialised_agent(player0_serialised)
+
+    player1 = agent.Player()
+    player1.load_serialised_agent(player1_serialised)
 
     #get results paths graphics for a good agent
     results_folder = r'C:\GitRepo\pyBuyAI\parameter_grid_search2\results\epsilon_decay_gridsearch_10kg_4bp'

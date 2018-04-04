@@ -10,8 +10,9 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import random
 
-#np.set_printoptions(linewidth=300,edgeitems=16)
+np.set_printoptions(linewidth=300,edgeitems=20)
 
 def main():
     """
@@ -40,10 +41,14 @@ def main():
             q_convergence_threshold=config_dict['q_convergence_threshold'],
             print_directory=config_dict['output_folder'],
             q_update_mode=config_dict['q_update_mode'],
+            share_rewards_on_tie=config_dict['share_rewards_on_tie'],
             file_name_base=str(game_id)
         )
+
+        new_player.set_q2(S,config_dict['bid_periods'],config_dict['agent_valuation'])
+
         new_player.set_r(S,config_dict['bid_periods'])
-        new_player.set_q()
+        #new_player.set_q()
         player_list = player_list + [new_player]
 
     all_players_converged = False
@@ -51,49 +56,52 @@ def main():
     while i<config_dict['episodes']+1:
         i = i + 1
         all_players_converged = all([x.Q_converged for x in player_list])
+        if config_dict['randomise_turn_order']:
+            random.shuffle(player_list)
+            logging.info('Shuffled player list. Turn order: {}'.format([p.player_id for p in player_list]))
 
         logging.info('Begin episode {0} of {1}'.format(i, config_dict['episodes'] - 1))
         s = env.get_initial_state(S, config_dict['initial_state_random'])
         for t in range(config_dict['bid_periods']):
             is_final_period = False if t < config_dict['bid_periods'] - 1 else True
             logging.info('Begin bidding period {0}, final period: {1}, state: {2}'.format(t, is_final_period, S[s]))
-            #player_list_reversed = player_list[::-1]
-            for p in player_list[::-1]:
+
+            at = {}
+            state_before_actions=s
+            for o,p in enumerate(player_list):
                 a = p.select_action(t,s)
+                at[p.player_id] = {}
+                at[p.player_id]['order'] = o
+                at[p.player_id]['action'] = a
+                at[p.player_id]['state'] = s
                 p.write_path_log_entry(log_args=(i, t, s, a))
-                p.update_q(t, s, a, is_final_period)
-                p.update_epsilon()
-                #print(p.Q)
-                #print('player:{}, time: {}, s:{}'.format(p.player_id,t,s))
-                #print(p.get_current_qmatrix(1, s))
-                #if np.max(p.get_current_qmatrix(1, s)) > 0 and p.player_id ==0:
-                #    print('look!')
-                if is_final_period:
-                    #print(t)
-                    logging.debug('Player {} penultimate Q pane: \n {}'.format(p.player_id, p.Q[t-1]))
-                    logging.debug('Player {} final Q pane: \n {}'.format(p.player_id, p.Q[t]))
-                    #logging.debug('Player {} payoff matrix for final period: \n {}'.format(p.player_id,p.get_payoff_matrix(t)))
-                    logging.debug(
-                        'Player {} payoff matrix for state {}: {}: \n {}'.format(p.player_id, s, p.S[s], p.get_current_qmatrix(t-1,s)))
+                #p.update_q(t, s, at, is_final_period)
+                #p.update_epsilon()
                 s = a
+                logging.info('Update state to {0}'.format({s: S[s]}))
+
+            for p,player in enumerate(player_list):
+                player.update_q(t, state_before_actions, at, is_final_period)
+                player.update_epsilon()
 
     logging.info('All episodes complete, printing path history and auction results for all agents...')
 
     path_dataframes = []
     results_dataframes = []
-    for i,player in enumerate(player_list[::-1]):
+
+    for j,player in enumerate(player_list):
         player.path_df = player.get_path_log_from_hdf(player.get_serialised_file_name()+'.hdf')
         path_dataframes.append(player.path_df)
         player.serialise_agent()
+        if config_dict['num_players'] == 1:
+            fig,axs = grap.plot_rewards_per_episode(player.path_df)
+            fig.suptitle('Rewards per Episode')
+            fig.savefig(player.get_serialised_file_name() + '_rewards_per_episode.png')
 
-        fig,axs = grap.plot_rewards_per_episode(player.path_df)
-        fig.suptitle('Rewards per Episode')
-        fig.savefig(player.get_serialised_file_name() + '_rewards_per_episode.png')
-
-        fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
-        fig.suptitle('Bids placed')
-        fig.savefig(player.get_serialised_file_name()+'.png')
-        #fig.show()
+            fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
+            fig.suptitle('Bids placed')
+            fig.savefig(player.get_serialised_file_name()+'.png')
+            #fig.show()
 
         #print results per agent: temporary
         results_df = env.get_results_summary(path_dataframes, 100)
@@ -105,7 +113,7 @@ def main():
         config_dict['results_df'] = results_df.to_dict()
         config_dict['player_id'] = player.player_id
 
-        pickle_file = 'Player'+str(p.player_id)+'_'+config_dict['output_file']+'.pck'
+        pickle_file = 'Player'+str(player.player_id)+'_'+config_dict['output_file']+'.pck'
         pickle_path = os.path.join(config_dict['output_folder'],pickle_file)
         with open(pickle_path, 'wb') as fp:
             pickle.dump(config_dict, fp, protocol=pickle.HIGHEST_PROTOCOL)
@@ -116,29 +124,38 @@ def main():
     final_result_path = os.path.join(config_dict['output_folder'],str(game_id)+'_results.csv')
     final_result_df.to_csv(final_result_path)
 
-    #n_bids = int(100)
-    #final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
-    #title = '{}, last {} games'.format(config_dict['q_update_mode'],n_bids)
-    #fig,axs = grap.plot_final_bids_heatmap(final_bids_df,config_dict['price_levels'],title)
-    #fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
+    if config_dict['num_players'] > 1:
+        n_bids = int(100)
+        final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
+        title = '{}, last {} games'.format(config_dict['q_update_mode'],n_bids)
+        fig,axs = grap.plot_final_bids_heatmap(final_bids_df,config_dict['price_levels'],title)
+        if config_dict['randomise_turn_order']:
+            suptitle='Randomised Turn Order, share rewards on tie = {}'.format(config_dict['share_rewards_on_tie'])
+            fig.suptitle(suptitle)
+        else:
+            suptitle='Turn Order: {}, share rewards on tie = {}'.format(', '.join([str(pl.player_id) for pl in player_list]),config_dict['share_rewards_on_tie'])
+        fig.suptitle(suptitle)
+        fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
+
+    #plt.show()
 
     return
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),
-                        format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+                        format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
     logging.info('Process start')
 
     config_dict = env.interpret_args(sys.argv)
     if len(config_dict) == 0:
         config_dict = {
             # Auction parameters
-            'episodes': 1000,
+            'episodes': 2000,
             'initial_state_random': False,
 
             # Environment parameters
-            'bid_periods': 2,
-            'price_levels': 5,
+            'bid_periods': 1,
+            'price_levels': 3,
             'num_players': 2,
             'q_convergence_threshold':100,
 
@@ -150,11 +167,13 @@ if __name__ == '__main__':
             'alpha': 0.8,
             'gamma': 0.5,
             'epsilon': 1,
-            'epsilon_decay_1': 0.9999,
+            'epsilon_decay_1': 0.999,
             'epsilon_decay_2': 0.99,
-            'epsilon_threshold': 0.3,
-            'agent_valuation': 4.1,
-            'q_update_mode':'nash'
+            'epsilon_threshold': 0.4,
+            'agent_valuation': 3.3,
+            'q_update_mode':'friend',
+            'randomise_turn_order':False,
+            'share_rewards_on_tie':True
         }
 
     main()
