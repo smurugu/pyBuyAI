@@ -448,7 +448,6 @@ class Player(object):
 
 def solve_maximin(q):
     expected_enemy_action = np.argmin(np.sum(q,axis=0))
-    retaliatory_action = np.argmin(q[:,expected_enemy_action])
-
+    retaliatory_action = np.argmax(q[:,expected_enemy_action])
     value = q[retaliatory_action,expected_enemy_action]
     return (retaliatory_action,value)
