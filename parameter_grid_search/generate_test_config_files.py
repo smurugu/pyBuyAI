@@ -29,7 +29,7 @@ output_file:%~n0
 python.exe ..\__main__.py %ARG_STRING%"""
 
 replace_dict = {
-    'episodes':[40000],
+    'episodes':[50000],
     'initial_state_random':[False],
     'randomise_turn_order':[True,False],
     'share_rewards_on_tie':[True,False],
@@ -77,4 +77,4 @@ for configuration in thing:
 for file in files_written:
     print(file)
 
-print("lala I'm done")
+print("Grid search completed")

@@ -46,16 +46,21 @@ class Player(object):
         :param is_tie: bool
         :return: reward
         """
-        if not won_auction:
-            return 0
 
-        if not is_tie:
-            return (agent_valuation - price_paid)
+        if not won_auction:
+            r = 0
         else:
-            if self.share_rewards_on_tie:
-                return (agent_valuation - price_paid) / 2
+            if is_tie:
+                if self.share_rewards_on_tie:
+                    r = (agent_valuation - price_paid) / 2
+                else:
+                    r = 0
             else:
-                return 0
+                r = (agent_valuation - price_paid)
+        logging.info('Calculate reward: won_action={}, share_rewards_on_tie={}, is_tie={}, agent_valuation={}, price_paid={} -> Reward = {}'.format(
+            won_auction, self.share_rewards_on_tie, is_tie, agent_valuation, price_paid, r
+        ))
+        return r
 
     def get_reward(self,a,is_final_period:bool):
         """
