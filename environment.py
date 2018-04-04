@@ -35,7 +35,6 @@ def get_initial_state(S,initial_state_random):
 
     return s
 
-
 def set_winner(state):
     """
     Function reads in a State named tuple and returns a new State tuple with the field 'current_winner' overwritten
@@ -79,10 +78,6 @@ def check_and_create_directory(dir):
         except Exception as ex:
             logging.error('Unable to create directory {0} \n Error:{1}'.format(dir,ex))
             return False
-
-def get_environment_level_file_name(episodes, bid_periods, price_levels, num_players):
-    file_name = 'Auction_E{0}_BP{1}_PL{2}_NP{3}'.format(episodes, bid_periods, price_levels, num_players)
-    return file_name
 
 def calc_rewards_vector(path_df, reward_vector_interval:int):
     rewards_vector = []

@@ -1,5 +1,5 @@
 import logging
-import agent
+import agent as agent
 import environment as env
 import os
 import sys
@@ -45,10 +45,8 @@ def main():
             file_name_base=str(game_id)
         )
 
-        new_player.set_q2(S,config_dict['bid_periods'],config_dict['agent_valuation'])
+        new_player.set_q(S,config_dict['bid_periods'])
 
-        new_player.set_r(S,config_dict['bid_periods'])
-        #new_player.set_q()
         player_list = player_list + [new_player]
 
     all_players_converged = False
@@ -74,9 +72,7 @@ def main():
                 at[p.player_id]['order'] = o
                 at[p.player_id]['action'] = a
                 at[p.player_id]['state'] = s
-                p.write_path_log_entry(log_args=(i, t, s, a))
-                #p.update_q(t, s, at, is_final_period)
-                #p.update_epsilon()
+                p.write_path_log_entry(log_args=(i, t, s, a, is_final_period))
                 s = a
                 logging.info('Update state to {0}'.format({s: S[s]}))
 
@@ -136,8 +132,6 @@ def main():
             suptitle='Turn Order: {}, share rewards on tie = {}'.format(', '.join([str(pl.player_id) for pl in player_list]),config_dict['share_rewards_on_tie'])
         fig.suptitle(suptitle)
         fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
-
-    #plt.show()
 
     return
 

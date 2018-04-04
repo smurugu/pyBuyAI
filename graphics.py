@@ -10,22 +10,15 @@ import itertools
 from numpy import nan
 import glob
 
-def rewards_graphics(player_list, episodes, bid_periods, price_levels, num_players):
-    """
-    Plot a graph showing how each players reward rate varied throughout the process
-    """
-    fig = plt.figure()
-    ax = fig.add_axes([0, 0, 1, 1, ])
-    for p in player_list:
-        ax.plot(p.rewards_vector, label='Player {p}'.format(p=p.player_id))
-    ax.set_xlabel('Thousand Episodes')
-    ax.set_ylabel('Mean Reward per Episode')
-    ax.set_title('Mean Rewards per Episode')
-    ax.legend()
-    fig.savefig(env.get_environment_level_file_name(episodes, bid_periods, price_levels, num_players)+'.png')
-    return fig, ax
-
 def path_graphics(path_df,alpha=0.5,sub_plots=5,trial_intervals=None):
+    """
+    Function returns a graph of bidding paths taken by a single agent
+    :param path_df: DataFrame containing actions taken by agent: must be of format produced by __main__ script
+    :param alpha: line opacity for plot
+    :param sub_plots: number of sub-plots
+    :param trial_intervals: optional override for trial numbers per plot
+    :return:
+    """
 
     first = path_df['episode'].min()
     last = path_df['episode'].max()
@@ -59,12 +52,22 @@ def path_graphics(path_df,alpha=0.5,sub_plots=5,trial_intervals=None):
     return (fig,axs)
 
 def plot_grid_search_heatmap(param1,param2,dependent_var,df):
+    """
+    Plot output of grid search results
+    """
     fig, axs = plt.subplots(1)
     df2 = df.pivot(param1,param2,dependent_var)
     sns.heatmap(df2,ax=axs)
     return (fig,axs)
 
 def plot_final_bids_heatmap(bids_df,price_levels,title=''):
+    """
+    Plot heatmap of final bids placed
+    :param bids_df:
+    :param price_levels:
+    :param title:
+    :return:
+    """
     bids_df['freq'] = 1
     prices = [-1] + list(range(price_levels))
     values = [list(bids_df[col].drop_duplicates()) for col in bids_df.columns]
@@ -81,6 +84,14 @@ def plot_final_bids_heatmap(bids_df,price_levels,title=''):
     return (fig,axs)
 
 def plot_rewards_per_episode(df,alpha=(0.7,1),colours=('tab:blue','tab:purple'),rolling_mean_window=10):
+    """
+    Line plot of rewards per episode
+    :param df:
+    :param alpha:
+    :param colours:
+    :param rolling_mean_window:
+    :return:
+    """
     df2 = df[df['bidding_round'] == max(df['bidding_round'])]
     df2['reward_ma'] = df2['reward'].rolling(rolling_mean_window,1).mean()
 
@@ -92,6 +103,7 @@ def plot_rewards_per_episode(df,alpha=(0.7,1),colours=('tab:blue','tab:purple'),
 
 if __name__ == '__main__':
 
+    #procedural code to produce various ad-hoc plots
 
     #get multiagent final bid heatmaps
     player0 = 'dd6daa2f-cc2c-40db-a42f-6e4ab6710f81'
@@ -322,4 +334,4 @@ if __name__ == '__main__':
 
 
 
-    print('lala, end')
+    print('Done generating graphics')
