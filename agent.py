@@ -178,15 +178,7 @@ class Player(object):
         return qvalue_array
 
     def update_q(self,t,s,a,is_final_period:bool):
-        if self.q_update_mode == 'nash':
-            return self.update_q_qlearning(t,s,a,is_final_period)
-        elif self.q_update_mode == 'friend':
-            return self.update_q_friends(t,s,a,is_final_period)
-        elif self.q_update_mode == 'foe':
-            return self.update_q_foe(t,s,a,is_final_period)
-        else:
-            logging.error("q_update_mode parameter not accepted: '{}'. Accepted values: " \
-                          "'nash','friend','foe'")
+        return self.update_q_qlearning(t,s,a,is_final_period)
 
     def update_q_qlearning(self,t,s,a,is_final_period:bool):
         """

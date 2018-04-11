@@ -46,33 +46,24 @@ def main():
         new_player.set_q()
         player_list = player_list + [new_player]
 
-    all_players_converged = False
     i = 0
     while i<config_dict['episodes']+1:
         i = i + 1
-        all_players_converged = all([x.Q_converged for x in player_list])
-
         logging.info('Begin episode {0} of {1}'.format(i, config_dict['episodes'] - 1))
         s = env.get_initial_state(S, config_dict['initial_state_random'])
+
         for t in range(config_dict['bid_periods']):
             is_final_period = False if t < config_dict['bid_periods'] - 1 else True
             logging.info('Begin bidding period {0}, final period: {1}, state: {2}'.format(t, is_final_period, S[s]))
-            #player_list_reversed = player_list[::-1]
             for p in player_list[::-1]:
                 a = p.select_action(t,s)
                 p.write_path_log_entry(log_args=(i, t, s, a))
                 p.update_q(t, s, a, is_final_period)
                 p.update_epsilon()
-                #print(p.Q)
-                #print('player:{}, time: {}, s:{}'.format(p.player_id,t,s))
-                #print(p.get_current_qmatrix(1, s))
-                #if np.max(p.get_current_qmatrix(1, s)) > 0 and p.player_id ==0:
-                #    print('look!')
+
                 if is_final_period:
-                    #print(t)
                     logging.debug('Player {} penultimate Q pane: \n {}'.format(p.player_id, p.Q[t-1]))
                     logging.debug('Player {} final Q pane: \n {}'.format(p.player_id, p.Q[t]))
-                    #logging.debug('Player {} payoff matrix for final period: \n {}'.format(p.player_id,p.get_payoff_matrix(t)))
                     logging.debug(
                         'Player {} payoff matrix for state {}: {}: \n {}'.format(p.player_id, s, p.S[s], p.get_current_qmatrix(t-1,s)))
                 s = a
@@ -95,7 +86,6 @@ def main():
         fig.savefig(player.get_serialised_file_name()+'.png')
         #fig.show()
 
-        #print results per agent: temporary
         results_df = env.get_results_summary(path_dataframes, 100)
         results_path = player.get_serialised_file_name()+'_results.csv'
         results_df.to_csv(results_path,index=False)
@@ -116,17 +106,11 @@ def main():
     final_result_path = os.path.join(config_dict['output_folder'],str(game_id)+'_results.csv')
     final_result_df.to_csv(final_result_path)
 
-    #n_bids = int(100)
-    #final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
-    #title = '{}, last {} games'.format(config_dict['q_update_mode'],n_bids)
-    #fig,axs = grap.plot_final_bids_heatmap(final_bids_df,config_dict['price_levels'],title)
-    #fig.savefig(player.get_serialised_file_name() + '_final_{}bids_heatmap.png'.format(str(n_bids)))
-
     return
 
 if __name__ == '__main__':
     logging.basicConfig(filename='bidding.log'.format(dt.datetime.strftime(dt.datetime.now(), '%Y%m%d-%H%M%S')),
-                        format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+                        format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
     logging.info('Process start')
 
     config_dict = env.interpret_args(sys.argv)
@@ -137,9 +121,9 @@ if __name__ == '__main__':
             'initial_state_random': False,
 
             # Environment parameters
-            'bid_periods': 2,
+            'bid_periods': 4,
             'price_levels': 5,
-            'num_players': 2,
+            'num_players': 1,
             'q_convergence_threshold':100,
 
             # Script run parameters
@@ -154,7 +138,7 @@ if __name__ == '__main__':
             'epsilon_decay_2': 0.99,
             'epsilon_threshold': 0.3,
             'agent_valuation': 4.1,
-            'q_update_mode':'nash'
+            'q_update_mode':'qlearn'
         }
 
     main()
