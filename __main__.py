@@ -49,21 +49,24 @@ def main():
 
         player_list = player_list + [new_player]
 
-    all_players_converged = False
+    #begin episodes
     i = 0
     while i<config_dict['episodes']+1:
-        i = i + 1
-        all_players_converged = all([x.Q_converged for x in player_list])
+        i = i+1
+
         if config_dict['randomise_turn_order']:
             random.shuffle(player_list)
             logging.info('Shuffled player list. Turn order: {}'.format([p.player_id for p in player_list]))
 
-        logging.info('Begin episode {0} of {1}'.format(i, config_dict['episodes'] - 1))
+        logging.info('Begin episode {0} of {1}'.format(i, config_dict['episodes']-1))
         s = env.get_initial_state(S, config_dict['initial_state_random'])
+
+        #begin bidding
         for t in range(config_dict['bid_periods']):
             is_final_period = False if t < config_dict['bid_periods'] - 1 else True
             logging.info('Begin bidding period {0}, final period: {1}, state: {2}'.format(t, is_final_period, S[s]))
 
+            #collect action history for auction in dict at
             at = {}
             state_before_actions=s
             for o,p in enumerate(player_list):
@@ -89,22 +92,13 @@ def main():
         player.path_df = player.get_path_log_from_hdf(player.get_serialised_file_name()+'.hdf')
         path_dataframes.append(player.path_df)
         player.serialise_agent()
-        if config_dict['num_players'] == 1:
-            fig,axs = grap.plot_rewards_per_episode(player.path_df)
-            fig.suptitle('Rewards per Episode')
-            fig.savefig(player.get_serialised_file_name() + '_rewards_per_episode.png')
 
-            fig,axs = grap.path_graphics(player.path_df,alpha=0.03,sub_plots=5)
-            fig.suptitle('Bids placed')
-            fig.savefig(player.get_serialised_file_name()+'.png')
-            #fig.show()
-
-        #print results per agent: temporary
         results_df = env.get_results_summary(path_dataframes, 100)
         results_path = player.get_serialised_file_name()+'_results.csv'
         results_df.to_csv(results_path,index=False)
         results_dataframes.append(results_df)
 
+        #add results into the config dict to be saved together: grid search result aggregation needs results + params
         config_dict['path_df'] = player.path_df.to_dict()
         config_dict['results_df'] = results_df.to_dict()
         config_dict['player_id'] = player.player_id
@@ -120,6 +114,7 @@ def main():
     final_result_path = os.path.join(config_dict['output_folder'],str(game_id)+'_results.csv')
     final_result_df.to_csv(final_result_path)
 
+    #Produce final bids heatmap if multiple agent
     if config_dict['num_players'] > 1:
         n_bids = int(100)
         final_bids_df = env.get_last_x_bids_array(path_dataframes,n_bids)
@@ -140,6 +135,7 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
     logging.info('Process start')
 
+    #if input args supplied via stdin, use these. Otherwise use config defaults below
     config_dict = env.interpret_args(sys.argv)
     if len(config_dict) == 0:
         config_dict = {
@@ -148,7 +144,7 @@ if __name__ == '__main__':
             'initial_state_random': False,
 
             # Environment parameters
-            'bid_periods': 1,
+            'bid_periods': 2,
             'price_levels': 3,
             'num_players': 2,
             'q_convergence_threshold':100,
@@ -165,7 +161,7 @@ if __name__ == '__main__':
             'epsilon_decay_2': 0.99,
             'epsilon_threshold': 0.4,
             'agent_valuation': 3.3,
-            'q_update_mode':'friend',
+            'q_update_mode':'foe',
             'randomise_turn_order':False,
             'share_rewards_on_tie':True
         }
